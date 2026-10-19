@@ -1,6 +1,4 @@
-import { createHash } from "node:crypto";
-import { Router, type IRouter, type RequestHandler } from "express";
-import multer from "multer";
+import { Router, type IRouter } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, documentsTable, risksTable, analysisRunsTable, type DocumentRow } from "@workspace/db";
 import {
@@ -17,13 +15,14 @@ import {
 } from "@workspace/api-zod";
 import {
   ExtractionError,
-  MAX_UPLOAD_BYTES,
   assertTextWithinLimits,
   extractFromUpload,
   type ExtractedDocument,
 } from "../lib/text-extraction";
 import { startAnalysis } from "../lib/analysis-runner";
 import { documentSummaryColumns, toDocumentSummary } from "../lib/document-summary";
+import { insertDocument } from "../lib/document-store";
+import { receiveFile, uploadedFilename } from "../lib/upload";
 
 const router: IRouter = Router();
 
@@ -33,43 +32,6 @@ const selectSummary = documentSummaryColumns;
 function toDetail(row: DocumentRow & { riskCount: number }) {
   const { content, contentHash: _hash, ...summary } = row;
   return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns: [] };
-}
-
-function hashContent(text: string): string {
-  return createHash("sha256").update(text, "utf8").digest("hex");
-}
-
-type InsertOutcome = { created: DocumentRow } | { duplicateOf: number };
-
-/** Insert unless identical text already exists (enforced by a unique index). */
-async function insertDocument(input: {
-  title: string;
-  filename: string | null;
-  fileSize: number | null;
-  extracted: ExtractedDocument;
-}): Promise<InsertOutcome> {
-  const contentHash = hashContent(input.extracted.text);
-  const [row] = await db
-    .insert(documentsTable)
-    .values({
-      title: input.title,
-      filename: input.filename,
-      fileSize: input.fileSize,
-      content: input.extracted.text,
-      charCount: input.extracted.text.length,
-      contentHash,
-      sourceType: input.extracted.sourceType,
-      pageOffsets: input.extracted.pageOffsets,
-    })
-    .onConflictDoNothing({ target: documentsTable.contentHash })
-    .returning();
-  if (row) return { created: row };
-
-  const [existing] = await db
-    .select({ id: documentsTable.id })
-    .from(documentsTable)
-    .where(eq(documentsTable.contentHash, contentHash));
-  return { duplicateOf: existing!.id };
 }
 
 router.get("/documents", async (_req, res) => {
@@ -115,28 +77,6 @@ router.post("/documents", async (req, res) => {
   res.status(201).json(CreateDocumentResponse.parse(toDetail({ ...outcome.created, riskCount: 0 })));
 });
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5 },
-});
-
-// Translate multer's errors into the API's {error} shape.
-const receiveFile: RequestHandler = (req, res, next) => {
-  upload.single("file")(req, res, (err: unknown) => {
-    if (!err) return next();
-    if (err instanceof multer.MulterError) {
-      const tooLarge = err.code === "LIMIT_FILE_SIZE";
-      res.status(tooLarge ? 413 : 400).json({
-        error: tooLarge
-          ? `The file is larger than the ${MAX_UPLOAD_BYTES / 1024 / 1024} MB limit.`
-          : `Upload rejected: ${err.message}. Send one file in the "file" field.`,
-      });
-      return;
-    }
-    next(err);
-  });
-};
-
 router.post("/documents/upload", receiveFile, async (req, res) => {
   const file = req.file;
   if (!file) {
@@ -144,7 +84,7 @@ router.post("/documents/upload", receiveFile, async (req, res) => {
     return;
   }
   // Browsers send UTF-8 filenames; multer decodes them as latin1.
-  const filename = Buffer.from(file.originalname, "latin1").toString("utf8");
+  const filename = uploadedFilename(file);
   const rawTitle = typeof req.body?.title === "string" ? req.body.title.trim() : "";
   if (rawTitle.length > 200) {
     res.status(400).json({ error: "Title must be 200 characters or fewer." });

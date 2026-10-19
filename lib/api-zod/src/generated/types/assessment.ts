@@ -9,6 +9,9 @@ import type { AssessmentKind } from './assessmentKind';
 import type { AssessmentVerdict } from './assessmentVerdict';
 import type { Evidence } from './evidence';
 import type { EvidenceBasis } from './evidenceBasis';
+import type { EvidenceType } from './evidenceType';
+import type { HumanDecision } from './humanDecision';
+import type { ReassessmentOutcome } from './reassessmentOutcome';
 import type { RiskLikelihood } from './riskLikelihood';
 import type { RiskSeverity } from './riskSeverity';
 
@@ -31,5 +34,33 @@ export interface Assessment {
   evidenceBasis: EvidenceBasis | null;
   /** Quotations cited by this assessment */
   evidence: Evidence[];
+  /** @nullable */
+  evidenceDocumentTitle: string | null;
+  /**
+     * Reassessment only - the mitigation action evaluated
+     * @nullable
+     */
+  actionId: number | null;
+  /** Reassessment only - the AI's outcome before server rules were applied */
+  aiVerdict: ReassessmentOutcome | null;
+  evidenceType: EvidenceType | null;
+  /** @nullable */
+  requirementsMet: string[] | null;
+  /** @nullable */
+  remainingGaps: string[] | null;
+  /** @nullable */
+  nextSteps: string[] | null;
+  /**
+     * Why the server changed the AI's outcome
+     * @nullable
+     */
+  guardrailNotes: string[] | null;
+  decision: HumanDecision | null;
+  /** @nullable */
+  decidedBy: string | null;
+  /** @nullable */
+  decisionNote: string | null;
+  /** @nullable */
+  decidedAt: Date | null;
   createdAt: Date;
 }

@@ -1,0 +1,5 @@
+Northwind Logistics - Contract status notes (compiled from two sources)
+
+Procurement tracker, 1 October 2026: "Data processing agreement with Northwind signed and filed."
+Legal Operations email, 8 October 2026: "We have not received a countersigned data processing agreement from Northwind; the version in the tracker is our unsigned draft."
+No signed copy has been located in the contract repository.

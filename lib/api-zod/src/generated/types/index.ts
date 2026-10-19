@@ -6,19 +6,23 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './actionInput';
 export * from './actionStatus';
+export * from './actionUpdate';
 export * from './activityItem';
 export * from './activityItemType';
 export * from './analysisRun';
 export * from './analysisRunStatus';
 export * from './analyzeRequest';
 export * from './assessment';
+export * from './assessmentDecisionInput';
 export * from './assessmentKind';
 export * from './assessmentVerdict';
 export * from './dashboardSummary';
 export * from './document';
 export * from './documentDetail';
 export * from './documentInput';
+export * from './documentPurpose';
 export * from './documentSource';
 export * from './documentStatus';
 export * from './documentUpload';
@@ -28,14 +32,22 @@ export * from './evidence';
 export * from './evidenceBasis';
 export * from './evidenceMatchType';
 export * from './evidenceStatus';
+export * from './evidenceType';
 export * from './healthStatus';
+export * from './humanDecision';
 export * from './listRisksParams';
 export * from './mitigationAction';
+export * from './reassessmentInput';
+export * from './reassessmentOutcome';
+export * from './reassessmentRequest';
+export * from './reassessmentRequestStatus';
 export * from './risk';
 export * from './riskDetail';
 export * from './riskLikelihood';
 export * from './riskSeverity';
 export * from './riskStatus';
+export * from './riskStatusChange';
+export * from './riskStatusChangeInput';
 export * from './severityCounts';
 export * from './statusCounts';
 export * from './systemStatus';

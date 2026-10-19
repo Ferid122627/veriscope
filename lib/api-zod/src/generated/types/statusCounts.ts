@@ -9,5 +9,5 @@
 export interface StatusCounts {
   open: number;
   mitigating: number;
-  resolved: number;
+  closed: number;
 }

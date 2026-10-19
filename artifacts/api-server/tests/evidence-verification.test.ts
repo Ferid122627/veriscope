@@ -16,6 +16,11 @@ import {
   ASSESSMENT_KINDS,
   ASSESSMENT_VERDICTS,
   ANALYSIS_RUN_STATUSES,
+  ACTION_STATUSES,
+  EVIDENCE_TYPES,
+  HUMAN_DECISIONS,
+  REASSESSMENT_REQUEST_STATUSES,
+  DOCUMENT_PURPOSES,
 } from "@workspace/db";
 import * as api from "@workspace/api-zod";
 
@@ -331,5 +336,13 @@ describe("shared vocabulary", () => {
     expect(enumValues(assessment.verdict)).toEqual([...ASSESSMENT_VERDICTS].sort());
     const runs = extra(api.GetDocumentResponse)["analysisRuns"]!.element.shape;
     expect(enumValues(runs.status)).toEqual([...ANALYSIS_RUN_STATUSES].sort());
+    // Phase 4 vocabulary.
+    const actions = extra(api.GetRiskResponse)["actions"]!.element.shape;
+    expect(enumValues(actions.status)).toEqual([...ACTION_STATUSES].sort());
+    expect(enumValues(assessment.evidenceType)).toEqual([...EVIDENCE_TYPES].sort());
+    expect(enumValues(assessment.decision)).toEqual([...HUMAN_DECISIONS].sort());
+    const requests = extra(api.GetRiskResponse)["reassessmentRequests"]!.element.shape;
+    expect(enumValues(requests.status)).toEqual([...REASSESSMENT_REQUEST_STATUSES].sort());
+    expect(enumValues(api.ListDocumentsResponseItem.shape.purpose)).toEqual([...DOCUMENT_PURPOSES].sort());
   });
 });

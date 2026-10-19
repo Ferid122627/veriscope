@@ -6,14 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * identified/not_detected come from document analysis; the others are reassessment outcomes (AI recommendations)
+ */
 export type AssessmentVerdict = typeof AssessmentVerdict[keyof typeof AssessmentVerdict];
 
 
 export const AssessmentVerdict = {
   identified: 'identified',
+  not_detected: 'not_detected',
   resolved: 'resolved',
   partially_resolved: 'partially_resolved',
-  not_resolved: 'not_resolved',
-  insufficient_evidence: 'insufficient_evidence',
-  not_detected: 'not_detected',
+  unresolved: 'unresolved',
+  needs_human_review: 'needs_human_review',
 } as const;

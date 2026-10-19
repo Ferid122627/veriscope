@@ -1,32 +1,19 @@
 import { useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, ShieldAlert, BadgeCheck, MessageSquareWarning, Briefcase, CircleAlert, ArrowUpRight, ListTodo, History, Quote, Flag, FileText, Wrench, ChevronRight } from "lucide-react";
-import { format } from "date-fns";
-import { useGetRisk, getGetRiskQueryKey } from "@workspace/api-client-react";
-import type { Evidence, Assessment, AssessmentKind, AssessmentVerdict, EvidenceBasis } from "@workspace/api-client-react";
-import { PageHeader, Panel, Skel, EmptyState, ErrorState, SeverityChip, StatusChip, Chip, EvidenceStatusBadge, stamp, riskCode, btnGhost } from "@/components/kit";
+import { ArrowLeft, ShieldAlert, BadgeCheck, MessageSquareWarning, Briefcase, CircleAlert, ArrowUpRight, History, Quote, Flag, FileText, Wrench, ChevronRight } from "lucide-react";
+import type { Evidence, Assessment, AssessmentKind, EvidenceBasis } from "@workspace/api-client-react";
+import { PageHeader, Panel, Skel, EmptyState, ErrorState, SeverityChip, StatusChip, Chip, EvidenceStatusBadge, stamp, riskCode, btnGhost, verdictStyle, verdictLabel } from "@/components/kit";
 import { cn } from "@/lib/utils";
+import { useRiskQuery, ActionsSection, ReassessPanel, StatusControl, StatusHistory } from "@/components/risk-workflow";
 
-const verdictStyle: Record<AssessmentVerdict, string> = {
-  identified: "border-foreground/25",
-  resolved: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
-  partially_resolved: "border-[hsl(48_85%_50%/0.4)] text-[hsl(42_80%_30%)] bg-[hsl(48_85%_50%/0.12)]",
-  not_resolved: "border-destructive/40 text-destructive bg-destructive/5",
-  insufficient_evidence: "border-foreground/20 text-muted-foreground border-dashed",
-  not_detected: "border-dashed border-[hsl(28_85%_52%/0.6)] text-[hsl(28_85%_36%)]",
-};
-const verdictLabel: Record<AssessmentVerdict, string> = {
-  identified: "Identified", resolved: "Resolved", partially_resolved: "Partially resolved", not_resolved: "Not resolved",
-  insufficient_evidence: "Insufficient evidence", not_detected: "Not detected in re-analysis",
-};
-const kindLabel: Record<AssessmentKind, string> = { initial: "Initial", reanalysis: "Re-analysis", reassessment: "Reassessment" };
+export const kindLabel: Record<AssessmentKind, string> = { initial: "Initial", reanalysis: "Re-analysis", reassessment: "Reassessment" };
 const basisLabel: Record<EvidenceBasis, string> = {
   direct: "Direct quotation",
   inferred: "Interpretation of several passages — not a direct quotation",
   none: "No direct supporting quotation",
 };
 
-function EvidenceItem({ e, compact }: { e: Evidence; compact?: boolean }) {
+export function EvidenceItem({ e, compact }: { e: Evidence; compact?: boolean }) {
   const located = e.matchType !== "not_found" && e.startOffset != null && e.endOffset != null;
   const href = located ? `/documents/${e.documentId}?start=${e.startOffset}&end=${e.endOffset}` : `/documents/${e.documentId}`;
   const isVerified = e.verified === true && e.matchType !== "not_found";
@@ -59,15 +46,24 @@ function EvidenceItem({ e, compact }: { e: Evidence; compact?: boolean }) {
   );
 }
 
-function AssessmentItem({ a }: { a: Assessment }) {
+export function AssessmentItem({ a, riskId }: { a: Assessment; riskId: number }) {
   const [open, setOpen] = useState(false);
   return (
     <li className="relative rise" data-testid={`item-assessment-${a.id}`}>
       <span className={cn("absolute -left-[25px] top-1 size-2.5 rounded-full border-2 border-card", a.kind === "initial" ? "bg-foreground" : "bg-accent ring-1 ring-foreground/40")} />
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="font-mono text-[10.5px] uppercase tracking-wider">{kindLabel[a.kind]}</span>
-        <Chip className={verdictStyle[a.verdict]}>{verdictLabel[a.verdict]}</Chip>
+        <Chip className={verdictStyle[a.verdict]}>{a.kind === "reassessment" && "AI: "}{verdictLabel[a.verdict]}</Chip>
       </div>
+      {a.kind === "reassessment" && (
+        <div className="mt-1.5 space-y-0.5 text-[12px]">
+          {a.evidenceDocumentTitle && <div>Evidence: {a.evidenceDocumentId != null ? <Link href={`/documents/${a.evidenceDocumentId}`} className="underline underline-offset-4">{a.evidenceDocumentTitle}</Link> : a.evidenceDocumentTitle}</div>}
+          <div data-testid={`text-decision-${a.id}`} className={cn(a.decision ? "font-medium" : "text-[hsl(28_85%_36%)]")}>
+            {a.decision ? `Human ${a.decision === "accepted" ? "accepted" : "rejected"} · ${a.decidedBy ?? ""}${a.decidedAt ? ` · ${stamp(a.decidedAt)}` : ""}` : "Awaiting human decision"}
+          </div>
+          <Link href={`/risks/${riskId}/reassessments/${a.id}`} data-testid={`link-compare-${a.id}`} className="inline-flex items-center gap-1 font-mono text-[10.5px] uppercase tracking-wider underline underline-offset-4">Compare before / after</Link>
+        </div>
+      )}
       {(a.severity || a.likelihood || a.evidenceBasis) && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {a.severity && <SeverityChip severity={a.severity} />}
@@ -79,8 +75,7 @@ function AssessmentItem({ a }: { a: Assessment }) {
       <div className="mt-1 font-mono text-[10.5px] text-muted-foreground">
         {stamp(a.createdAt)}{a.confidence != null && ` · ${Math.round(a.confidence * (a.confidence <= 1 ? 100 : 1))}% conf.`}{a.model && ` · ${a.model}`}{a.analysisRunId != null && ` · run #${a.analysisRunId}`}
       </div>
-      {a.evidenceDocumentId != null && <Link href={`/documents/${a.evidenceDocumentId}`} className="mt-1 inline-block font-mono text-[10.5px] underline underline-offset-4" data-testid={`link-assessment-doc-${a.id}`}>view evidence document</Link>}
-      {a.evidence.length > 0 && (
+            {a.evidence.length > 0 && (
         <div className="mt-1.5">
           <button onClick={() => setOpen((o) => !o)} data-testid={`button-toggle-quotes-${a.id}`} aria-expanded={open} className="inline-flex items-center gap-1 font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground hover:text-foreground">
             <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />{a.evidence.length} quote{a.evidence.length > 1 && "s"} cited · {a.evidence.filter((e) => e.verified).length} verified
@@ -96,7 +91,7 @@ export default function RiskDetail() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const valid = Number.isInteger(id) && id > 0;
-  const q = useGetRisk(id, { query: { enabled: valid, queryKey: getGetRiskQueryKey(id) } });
+  const q = useRiskQuery(id, valid);
   const r = q.data;
 
   if (!valid || (q.isError && (q.error as { status?: number })?.status === 404)) {
@@ -144,7 +139,7 @@ export default function RiskDetail() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <div className="space-y-6 min-w-0">
             <p className="font-serif text-[18px] leading-relaxed text-foreground/90 rise" data-testid="text-risk-description">{r.description}</p>
 
@@ -179,27 +174,23 @@ export default function RiskDetail() {
                 : <p className="text-sm text-muted-foreground">No mitigation was recommended for this risk.</p>}
             </Panel>
 
-            <Panel title="Mitigation actions" aside={<ListTodo className="size-3.5 text-muted-foreground" />} bodyClass="p-0">
-              {!r.actions.length ? <EmptyState icon={<ListTodo className="size-5" />} title="No mitigation actions" body="No actions have been planned against this risk yet." />
-                : r.actions.map((a) => (
-                  <div key={a.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-border px-4 py-3 last:border-0" data-testid={`row-action-${a.id}`}>
-                    <div className={cn("text-[14px]", a.status === "done" && "text-muted-foreground line-through decoration-foreground/30")}>{a.description}</div>
-                    <StatusChip status={a.status} />
-                    <div className="col-span-2 font-mono text-[11px] text-muted-foreground">{a.owner ?? "Unassigned"} · {a.dueDate ? `due ${format(new Date(a.dueDate), "dd MMM yyyy")}` : "no due date"}</div>
-                  </div>
-                ))}
-            </Panel>
+            <ActionsSection risk={r} />
           </div>
 
-          <Panel title="Assessment history" aside={<History className="size-3.5 text-muted-foreground" />} className="self-start">
+          <div className="space-y-6 self-start">
+          <StatusControl risk={r} />
+          <ReassessPanel risk={r} />
+          <Panel title="Assessment history" aside={<History className="size-3.5 text-muted-foreground" />}>
             {!assessments.length ? <EmptyState icon={<History className="size-5" />} title="No verdicts recorded" body="Initial and follow-up assessments will form a timeline here." />
               : <>
                 <p className="mb-4 text-xs leading-relaxed text-muted-foreground">Newest first. Every assessment is preserved; later runs append to this record and never overwrite it.</p>
                 <ol className="relative space-y-5 border-l border-border pl-5">
-                  {assessments.map((a) => <AssessmentItem key={a.id} a={a} />)}
+                  {assessments.map((a) => <AssessmentItem key={a.id} a={a} riskId={r.id} />)}
                 </ol>
               </>}
           </Panel>
+          <StatusHistory changes={r.statusChanges} riskId={r.id} />
+          </div>
         </div>
       </>}
     </div>

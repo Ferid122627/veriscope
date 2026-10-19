@@ -4,8 +4,8 @@ import { AlertTriangle, RotateCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BadgeCheck, CircleAlert, CircleDashed, CircleSlash } from "lucide-react";
 
-import { RiskSeverity, RiskStatus, RiskLikelihood, EvidenceStatus as EvidenceStatusEnum } from "@workspace/api-client-react";
-import type { EvidenceStatus } from "@workspace/api-client-react";
+import { RiskSeverity, RiskStatus, RiskLikelihood, ActionStatus, EvidenceStatus as EvidenceStatusEnum } from "@workspace/api-client-react";
+import type { EvidenceStatus, AssessmentVerdict, EvidenceType } from "@workspace/api-client-react";
 
 const sevRank: Record<RiskSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 export const SEVERITIES = (Object.values(RiskSeverity) as RiskSeverity[]).sort((a, b) => sevRank[a] - sevRank[b]);
@@ -40,9 +40,9 @@ const statusStyle: Record<string, string> = {
   open: "border-foreground/25 text-foreground",
   mitigating: "border-[hsl(230_38%_40%/0.4)] text-[hsl(230_38%_35%)] bg-[hsl(230_38%_40%/0.07)]",
   resolved: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
-  todo: "border-foreground/25 text-foreground",
+  closed: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
+  submitted_for_review: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
   in_progress: "border-[hsl(230_38%_40%/0.4)] text-[hsl(230_38%_35%)] bg-[hsl(230_38%_40%/0.07)]",
-  done: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
   uploaded: "border-foreground/20 text-muted-foreground",
   analyzing: "border-[hsl(230_38%_40%/0.4)] text-[hsl(230_38%_35%)]",
   analyzed: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)]",
@@ -151,3 +151,48 @@ export function EvidenceStatusBadge({ status, testId }: { status: EvidenceStatus
 }
 
 export const riskCode = (id: number) => `R-${String(id).padStart(4, "0")}`;
+
+export const ACTION_STATUSES = Object.values(ActionStatus) as ActionStatus[];
+export const actionStatusLabel: Record<ActionStatus, string> = { open: "Open", in_progress: "In progress", submitted_for_review: "Submitted for review" };
+export const riskStatusLabel: Record<RiskStatus, string> = { open: "Open", mitigating: "Mitigating", closed: "Closed" };
+
+export const verdictStyle: Record<AssessmentVerdict, string> = {
+  identified: "border-foreground/25",
+  not_detected: "border-dashed border-[hsl(28_85%_52%/0.6)] text-[hsl(28_85%_36%)]",
+  resolved: "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)] bg-[hsl(150_35%_35%/0.08)]",
+  partially_resolved: "border-[hsl(48_85%_50%/0.4)] text-[hsl(42_80%_30%)] bg-[hsl(48_85%_50%/0.12)]",
+  unresolved: "border-destructive/40 text-destructive bg-destructive/5",
+  needs_human_review: "border-dashed border-[hsl(28_85%_52%/0.6)] text-[hsl(28_85%_36%)] bg-[hsl(28_85%_52%/0.06)]",
+};
+export const verdictLabel: Record<AssessmentVerdict, string> = {
+  identified: "Identified", not_detected: "Not detected in re-analysis", resolved: "Resolved",
+  partially_resolved: "Partially resolved", unresolved: "Unresolved", needs_human_review: "Needs human review",
+};
+export const evidenceTypeLabel: Record<EvidenceType, { label: string; explain: string }> = {
+  operating_evidence: { label: "Operating evidence", explain: "Shows the control actually operating (logs, records, signed artifacts). This is the only kind of evidence that can prove a risk is resolved." },
+  policy_or_design: { label: "Policy or design", explain: "Describes how things should work. A policy or design cannot prove that the risk is resolved in practice." },
+  plan_or_promise: { label: "Plan or promise", explain: "States an intention or future commitment. A plan cannot prove resolution until it is carried out and evidenced." },
+  unrelated: { label: "Unrelated", explain: "The document does not address this risk, so it cannot support resolution." },
+  mixed: { label: "Mixed", explain: "Contains some operating evidence alongside policies or plans. Only the operating-evidence parts can support resolution." },
+};
+
+export const inputCls = "h-8 w-full rounded-sm border border-input bg-background px-2.5 text-[13px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/15";
+export const labelCls = "font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground";
+
+export function AiRecommendation({ children, className, testId }: { children: ReactNode; className?: string; testId?: string }) {
+  return (
+    <div data-testid={testId} className={cn("rounded-sm border border-dashed border-foreground/35 bg-background/60 px-3 py-2.5", className)}>
+      <div className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground">AI recommendation — not a decision</div>
+      {children}
+    </div>
+  );
+}
+
+export function HumanDecisionBox({ children, by, at, className, testId }: { children: ReactNode; by: string; at: string | null; className?: string; testId?: string }) {
+  return (
+    <div data-testid={testId} className={cn("rounded-sm border border-primary bg-primary/[0.04] px-3 py-2.5 shadow-[inset_3px_0_0_hsl(var(--primary))]", className)}>
+      <div className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.18em] text-foreground">Human decision · {by}{at && ` · ${stamp(at)}`}</div>
+      {children}
+    </div>
+  );
+}

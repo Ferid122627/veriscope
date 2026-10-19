@@ -12,7 +12,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate React Query hooks + Zod schemas after editing `lib/api-spec/openapi.yaml`
 - `pnpm --filter @workspace/db run push` — apply Drizzle schema to the dev DB (production schema is applied by Publish)
 - Required env: `DATABASE_URL` (Replit Postgres), `AI_INTEGRATIONS_OPENAI_BASE_URL` + `AI_INTEGRATIONS_OPENAI_API_KEY` (Replit AI Integrations; no personal key, usage billed to Replit credits). Without the AI vars the app runs but analysis returns 503.
-- Sample documents for demos: `samples/supplier-agreement.pdf` (3 pages), `samples/continuity-memo.docx`
+- Sample documents for demos: `samples/supplier-agreement.pdf` (3 pages), `samples/continuity-memo.docx`; follow-up evidence for reassessing the data-processing risk: `samples/evidence-*.txt` (executed / promise / conflicting / unrelated)
 
 ## Stack
 
@@ -27,7 +27,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 ## Where things live
 
 - API contract (source of truth): `lib/api-spec/openapi.yaml`
-- DB schema: `lib/db/src/schema/` (documents, risks, evidence, assessments, mitigation-actions)
+- DB schema: `lib/db/src/schema/` (documents, analysis-runs, risks, evidence, assessments, mitigation-actions, reassessments)
 - API routes: `artifacts/api-server/src/routes/`
 - API tests: `artifacts/api-server/tests/`
 - Frontend: `artifacts/veriscope/src/`
@@ -51,13 +51,19 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Re-analysis (`rerun: true`) never deletes risks. The model sees the document's existing risks and may set `matchesExistingRiskId`; the server accepts only ids belonging to that document, else falls back to an identical-title match. Matched risks keep id, title and human-set status, update current fields and gain a `reanalysis` assessment; new issues get a new risk + one mitigation action; unmatched existing risks get a `not_detected` assessment and are flagged for review (not resolved).
 - A risk's current evidence = evidence of its latest `identified` assessment (plus manually added evidence with no assessment). Older evidence stays attached to its own assessment and is shown in the history. Dashboard evidence totals count current evidence only.
 - Deleting a document cascades to its risks, evidence, actions and assessments.
+- Risk status (open / mitigating / closed) changes only through `POST /risks/:id/status`, which records who, why and the previous status in `risk_status_changes`. Closing needs `approveClosure: true`, a name and a justification of 10+ characters. Nothing else (actions, uploads, analysis, reassessment, accepting a recommendation) changes the status.
+- Action statuses are open / in_progress / submitted_for_review; there is no "done", because finishing an action is not proof the risk is gone.
+- Reassessment (`POST /risks/:id/reassessments`, one of file / pasted text / existing document) runs in the background, one pending request per risk (partial unique index). The AI gets the risk, its current verified quotes, the action and the new evidence (untrusted block). Quotes are verified against the new document. The outcome is stored as a `reassessment` assessment; on failure only the request is marked failed.
+- Server outcome rules (`lib/reassessment-rules.ts`) only move an outcome away from "resolved", never towards it: unrelated → unresolved; plan/promise → unresolved; policy or mixed → partially resolved; gaps listed → partially resolved; no verified quote, any unfound quote, or confidence < 0.6 → needs human review. The AI's own outcome is kept in `aiVerdict` and each change is explained in `guardrailNotes`.
+- A human decision on a recommendation (accept/reject, once, with name) is stored on the assessment and is separate from closing the risk.
+- Evidence documents for reassessment are capped at 100,000 characters (sent in one request) and stored with `purpose = evidence`.
 
 ## Product
 
 - Phase 1 (done): data model, dashboard, documents (add by pasted text, view, delete), risk register and risk detail views, live system status (API / DB / AI provider).
 - Phase 2 (done): PDF/DOCX/TXT upload with text extraction, AI risk analysis with verified evidence, progress and errors in the UI.
 - Phase 3 (done): evidence verification detail (match type, normalizations, ambiguity, basis, review reasons), filterable risk register, source document on risk detail, stable ids and preserved history across re-analysis.
-- Later phases: mitigation action management, reassessment with new evidence.
+- Phase 4 (done): mitigation action management, reassessment against new evidence with a before/after comparison view, human decisions and approval-gated closing.
 
 ## User preferences
 
@@ -75,6 +81,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Orval generates boolean query params as `z.coerce.boolean()`, which reads "false" as true; parse them explicitly in the route (see `reviewRequired` in routes/risks.ts).
 - Orval generates `allOf` schemas (e.g. RiskDetail, DocumentDetail) as `.and()` intersections, so they have no `.shape`.
 - Status/severity/evidence enums are defined twice (Drizzle constants and OpenAPI); `tests/evidence-verification.test.ts` fails if they drift. The frontend derives its lists from the generated enums.
+- Reassessment and analysis share the mocked `requestStructuredCompletion`; tests distinguish them by `schemaName` (`risk_analysis` / `risk_reassessment`).
 - API tests mock only `requestStructuredCompletion`; test fixtures in `artifacts/api-server/tests/fixtures/` contain unique text so duplicate detection never collides with real documents.
 
 ## Pointers

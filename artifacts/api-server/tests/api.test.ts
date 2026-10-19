@@ -121,7 +121,7 @@ describe("risks", () => {
     });
     await db.insert(mitigationActionsTable).values([
       { riskId: risk!.id, description: "Request SOC 2 Type II", dueDate: "2026-11-30" },
-      { riskId: risk!.id, description: "Add audit clause", status: "done" },
+      { riskId: risk!.id, description: "Add audit clause", status: "submitted_for_review" },
     ]);
     await db.insert(assessmentsTable).values({
       riskId: risk!.id,

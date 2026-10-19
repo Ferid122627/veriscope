@@ -19,5 +19,15 @@ export interface MitigationAction {
      */
   dueDate: string | null;
   status: ActionStatus;
+  /**
+     * Supporting evidence described by the owner
+     * @nullable
+     */
+  evidenceNote: string | null;
+  /** @nullable */
+  evidenceDocumentId: number | null;
+  /** @nullable */
+  evidenceDocumentTitle: string | null;
   createdAt: Date;
+  updatedAt: Date;
 }

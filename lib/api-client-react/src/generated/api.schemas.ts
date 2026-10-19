@@ -117,11 +117,24 @@ export const DocumentStatus = {
   failed: 'failed',
 } as const;
 
+/**
+ * evidence = submitted as follow-up evidence for a reassessment
+ */
+export type DocumentPurpose = typeof DocumentPurpose[keyof typeof DocumentPurpose];
+
+
+export const DocumentPurpose = {
+  analysis: 'analysis',
+  evidence: 'evidence',
+} as const;
+
 export interface Document {
   id: number;
   title: string;
   /** @nullable */
   filename: string | null;
+  /** evidence = submitted as follow-up evidence for a reassessment */
+  purpose: DocumentPurpose;
   charCount: number;
   sourceType: DocumentSource;
   /**
@@ -189,13 +202,16 @@ export const RiskSeverity = {
   critical: 'critical',
 } as const;
 
+/**
+ * closed is only set through an explicit human approval
+ */
 export type RiskStatus = typeof RiskStatus[keyof typeof RiskStatus];
 
 
 export const RiskStatus = {
   open: 'open',
   mitigating: 'mitigating',
-  resolved: 'resolved',
+  closed: 'closed',
 } as const;
 
 export type RiskLikelihood = typeof RiskLikelihood[keyof typeof RiskLikelihood];
@@ -322,10 +338,62 @@ export type ActionStatus = typeof ActionStatus[keyof typeof ActionStatus];
 
 
 export const ActionStatus = {
-  todo: 'todo',
+  open: 'open',
   in_progress: 'in_progress',
-  done: 'done',
+  submitted_for_review: 'submitted_for_review',
 } as const;
+
+export interface ActionInput {
+  /**
+     * @minLength 3
+     * @maxLength 2000
+     */
+  description: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  owner?: string | null;
+  /**
+     * Calendar date, YYYY-MM-DD
+     * @nullable
+     */
+  dueDate?: string | null;
+  status?: ActionStatus;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  evidenceNote?: string | null;
+  /** @nullable */
+  evidenceDocumentId?: number | null;
+}
+
+export interface ActionUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 2000
+     */
+  description?: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  owner?: string | null;
+  /**
+     * Calendar date, YYYY-MM-DD
+     * @nullable
+     */
+  dueDate?: string | null;
+  status?: ActionStatus;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  evidenceNote?: string | null;
+  /** @nullable */
+  evidenceDocumentId?: number | null;
+}
 
 export interface MitigationAction {
   id: number;
@@ -339,20 +407,156 @@ export interface MitigationAction {
      */
   dueDate: string | null;
   status: ActionStatus;
+  /**
+     * Supporting evidence described by the owner
+     * @nullable
+     */
+  evidenceNote: string | null;
+  /** @nullable */
+  evidenceDocumentId: number | null;
+  /** @nullable */
+  evidenceDocumentTitle: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
+/**
+ * identified/not_detected come from document analysis; the others are reassessment outcomes (AI recommendations)
+ */
 export type AssessmentVerdict = typeof AssessmentVerdict[keyof typeof AssessmentVerdict];
 
 
 export const AssessmentVerdict = {
   identified: 'identified',
+  not_detected: 'not_detected',
   resolved: 'resolved',
   partially_resolved: 'partially_resolved',
-  not_resolved: 'not_resolved',
-  insufficient_evidence: 'insufficient_evidence',
-  not_detected: 'not_detected',
+  unresolved: 'unresolved',
+  needs_human_review: 'needs_human_review',
 } as const;
+
+export type ReassessmentOutcome = typeof ReassessmentOutcome[keyof typeof ReassessmentOutcome];
+
+
+export const ReassessmentOutcome = {
+  resolved: 'resolved',
+  partially_resolved: 'partially_resolved',
+  unresolved: 'unresolved',
+  needs_human_review: 'needs_human_review',
+} as const;
+
+/**
+ * Only operating_evidence (proof a control is working) can support resolution
+ */
+export type EvidenceType = typeof EvidenceType[keyof typeof EvidenceType];
+
+
+export const EvidenceType = {
+  operating_evidence: 'operating_evidence',
+  policy_or_design: 'policy_or_design',
+  plan_or_promise: 'plan_or_promise',
+  unrelated: 'unrelated',
+  mixed: 'mixed',
+} as const;
+
+export type HumanDecision = typeof HumanDecision[keyof typeof HumanDecision];
+
+
+export const HumanDecision = {
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;
+
+/**
+ * Provide exactly one of file, content, or documentId
+ */
+export interface ReassessmentInput {
+  file?: Blob;
+  /** Pasted follow-up evidence text */
+  content?: string;
+  /** @maxLength 200 */
+  title?: string;
+  /** Use an existing document as the evidence */
+  documentId?: number;
+  /** Mitigation action the evidence relates to (defaults to the most recently updated action) */
+  actionId?: number;
+}
+
+export type ReassessmentRequestStatus = typeof ReassessmentRequestStatus[keyof typeof ReassessmentRequestStatus];
+
+
+export const ReassessmentRequestStatus = {
+  pending: 'pending',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface ReassessmentRequest {
+  id: number;
+  riskId: number;
+  /** @nullable */
+  actionId: number | null;
+  evidenceDocumentId: number;
+  evidenceDocumentTitle: string;
+  status: ReassessmentRequestStatus;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  assessmentId: number | null;
+  model: string;
+  createdAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+}
+
+export interface AssessmentDecisionInput {
+  decision: HumanDecision;
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  decidedBy: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export interface RiskStatusChangeInput {
+  status: RiskStatus;
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  changedBy: string;
+  /**
+     * Required (min 10 characters) when closing
+     * @maxLength 2000
+     * @nullable
+     */
+  note?: string | null;
+  /**
+     * Reassessment this decision is based on
+     * @nullable
+     */
+  assessmentId?: number | null;
+  /** Must be true to close the risk (explicit human approval) */
+  approveClosure?: boolean;
+}
+
+export interface RiskStatusChange {
+  id: number;
+  riskId: number;
+  fromStatus: RiskStatus;
+  toStatus: RiskStatus;
+  changedBy: string;
+  /** @nullable */
+  note: string | null;
+  /** @nullable */
+  assessmentId: number | null;
+  createdAt: string;
+}
 
 export type AssessmentKind = typeof AssessmentKind[keyof typeof AssessmentKind];
 
@@ -382,10 +586,42 @@ export interface Assessment {
   evidenceBasis: EvidenceBasis | null;
   /** Quotations cited by this assessment */
   evidence: Evidence[];
+  /** @nullable */
+  evidenceDocumentTitle: string | null;
+  /**
+     * Reassessment only - the mitigation action evaluated
+     * @nullable
+     */
+  actionId: number | null;
+  /** Reassessment only - the AI's outcome before server rules were applied */
+  aiVerdict: ReassessmentOutcome | null;
+  evidenceType: EvidenceType | null;
+  /** @nullable */
+  requirementsMet: string[] | null;
+  /** @nullable */
+  remainingGaps: string[] | null;
+  /** @nullable */
+  nextSteps: string[] | null;
+  /**
+     * Why the server changed the AI's outcome
+     * @nullable
+     */
+  guardrailNotes: string[] | null;
+  decision: HumanDecision | null;
+  /** @nullable */
+  decidedBy: string | null;
+  /** @nullable */
+  decisionNote: string | null;
+  /** @nullable */
+  decidedAt: string | null;
   createdAt: string;
 }
 
 export type RiskDetail = Risk & {
+  /** Newest first */
+  reassessmentRequests: ReassessmentRequest[];
+  /** Newest first */
+  statusChanges: RiskStatusChange[];
   sourceDocument: Document;
   /** Current evidence (from the latest assessment that identified the risk) */
   evidence: Evidence[];
@@ -403,7 +639,7 @@ export interface SeverityCounts {
 export interface StatusCounts {
   open: number;
   mitigating: number;
-  resolved: number;
+  closed: number;
 }
 
 export interface DashboardSummary {

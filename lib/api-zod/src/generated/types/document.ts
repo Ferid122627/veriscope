@@ -5,6 +5,7 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { DocumentPurpose } from './documentPurpose';
 import type { DocumentSource } from './documentSource';
 import type { DocumentStatus } from './documentStatus';
 
@@ -13,6 +14,8 @@ export interface Document {
   title: string;
   /** @nullable */
   filename: string | null;
+  /** evidence = submitted as follow-up evidence for a reassessment */
+  purpose: DocumentPurpose;
   charCount: number;
   sourceType: DocumentSource;
   /**

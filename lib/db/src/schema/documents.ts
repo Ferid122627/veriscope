@@ -6,6 +6,8 @@ export const DOCUMENT_STATUSES = ["uploaded", "analyzing", "analyzed", "failed"]
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const DOCUMENT_SOURCES = ["text", "pdf", "docx"] as const;
+// "evidence": submitted as follow-up evidence for a reassessment.
+export const DOCUMENT_PURPOSES = ["analysis", "evidence"] as const;
 
 export const documentsTable = pgTable(
   "documents",
@@ -20,6 +22,7 @@ export const documentsTable = pgTable(
   // sha256 of `content`; used to stop the same text being added twice.
   contentHash: text("content_hash").notNull(),
   sourceType: text("source_type", { enum: DOCUMENT_SOURCES }).notNull().default("text"),
+  purpose: text("purpose", { enum: DOCUMENT_PURPOSES }).notNull().default("analysis"),
   fileSize: integer("file_size"),
   // For PDFs: character offset in `content` where each page starts (index 0 = page 1).
   pageOffsets: jsonb("page_offsets").$type<number[]>(),

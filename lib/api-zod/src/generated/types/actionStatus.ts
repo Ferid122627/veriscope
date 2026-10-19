@@ -10,7 +10,7 @@ export type ActionStatus = typeof ActionStatus[keyof typeof ActionStatus];
 
 
 export const ActionStatus = {
-  todo: 'todo',
+  open: 'open',
   in_progress: 'in_progress',
-  done: 'done',
+  submitted_for_review: 'submitted_for_review',
 } as const;

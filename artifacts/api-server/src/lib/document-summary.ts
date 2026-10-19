@@ -14,6 +14,7 @@ export const documentSummaryColumns = {
   filename: documentsTable.filename,
   charCount: documentsTable.charCount,
   sourceType: documentsTable.sourceType,
+  purpose: documentsTable.purpose,
   fileSize: documentsTable.fileSize,
   pageOffsets: documentsTable.pageOffsets,
   status: documentsTable.status,

@@ -47,12 +47,12 @@ export default function Documents() {
                 body="Veriscope works from source text. Add a contract, policy or audit report and it becomes the ground truth every risk must quote from."
                 action={<button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-first-document"><Plus className="size-4" /> Add your first document</button>} />
             ) : docs.data.map((d, i) => (
-              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_170px_90px_80px_120px_40px] rise" style={{ animationDelay: `${i * 25}ms` }} data-testid={`row-document-${d.id}`}>
+              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_230px_90px_80px_120px_40px] rise" style={{ animationDelay: `${i * 25}ms` }} data-testid={`row-document-${d.id}`}>
                 <Link href={`/documents/${d.id}`} className="min-w-0" data-testid={`link-document-${d.id}`}>
                   <div className="truncate font-medium text-[14px] group-hover:underline underline-offset-4 decoration-accent decoration-2">{d.title}</div>
                   {d.filename && <div className="truncate font-mono text-[11px] text-muted-foreground">{d.filename}</div>}
                 </Link>
-                <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} /><Chip className="border-border text-muted-foreground">{d.sourceType}</Chip></span>
+                <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} /><Chip className="border-border text-muted-foreground">{d.sourceType}</Chip>{d.purpose === "evidence" && <Chip testId={`tag-evidence-${d.id}`} className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}</span>
                 <span className="hidden text-right font-mono text-xs tabular text-muted-foreground md:block">{num(d.charCount)}</span>
                 <span className="hidden text-right font-mono text-sm tabular md:block">{d.riskCount}</span>
                 <span className="hidden font-mono text-[11px] text-muted-foreground md:block">{ago(d.createdAt)}</span>

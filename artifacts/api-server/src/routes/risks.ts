@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import {
   db,
   documentsTable,
@@ -7,6 +7,8 @@ import {
   evidenceTable,
   mitigationActionsTable,
   assessmentsTable,
+  reassessmentRequestsTable,
+  riskStatusChangesTable,
 } from "@workspace/db";
 import {
   GetRiskParams,
@@ -60,7 +62,7 @@ const riskColumns = {
   )`.mapWith((v: string | null) => (v === null ? null : new Date(v))),
   openActionCount: sql<number>`(
     select count(*)::int from mitigation_actions m
-    where m.risk_id = "risks"."id" and m.status <> 'done'
+    where m.risk_id = "risks"."id" and m.status in ('open', 'in_progress')
   )`,
 };
 
@@ -117,7 +119,7 @@ router.get("/risks/:id", async (req, res) => {
     return;
   }
 
-  const [allEvidence, actions, assessmentRows, [sourceDocument]] = await Promise.all([
+  const [allEvidence, actionRows, assessmentRows, [sourceDocument], requestRows, statusChanges] = await Promise.all([
     db
       .select({
         id: evidenceTable.id,
@@ -151,12 +153,50 @@ router.get("/risks/:id", async (req, res) => {
       .where(eq(assessmentsTable.riskId, id))
       .orderBy(desc(assessmentsTable.createdAt), desc(assessmentsTable.id)),
     db.select(documentSummaryColumns).from(documentsTable).where(eq(documentsTable.id, risk.documentId)),
+    db
+      .select()
+      .from(reassessmentRequestsTable)
+      .where(eq(reassessmentRequestsTable.riskId, id))
+      .orderBy(desc(reassessmentRequestsTable.createdAt), desc(reassessmentRequestsTable.id)),
+    db
+      .select()
+      .from(riskStatusChangesTable)
+      .where(eq(riskStatusChangesTable.riskId, id))
+      .orderBy(desc(riskStatusChangesTable.createdAt), desc(riskStatusChangesTable.id)),
   ]);
+
+  // Titles of every document referenced by actions, assessments and reassessment requests.
+  const docIds = [
+    ...new Set(
+      [
+        ...actionRows.map((a) => a.evidenceDocumentId),
+        ...assessmentRows.map((a) => a.evidenceDocumentId),
+        ...requestRows.map((r) => r.evidenceDocumentId),
+      ].filter((v): v is number => v !== null),
+    ),
+  ];
+  const titles = new Map(
+    docIds.length
+      ? (
+          await db
+            .select({ id: documentsTable.id, title: documentsTable.title })
+            .from(documentsTable)
+            .where(inArray(documentsTable.id, docIds))
+        ).map((d) => [d.id, d.title])
+      : [],
+  );
+  const titleOf = (docId: number | null) => (docId === null ? null : (titles.get(docId) ?? null));
+  const actions = actionRows.map((a) => ({ ...a, evidenceDocumentTitle: titleOf(a.evidenceDocumentId) }));
+  const reassessmentRequests = requestRows.map((r) => ({
+    ...r,
+    evidenceDocumentTitle: titleOf(r.evidenceDocumentId) ?? "(deleted document)",
+  }));
 
   const currentAssessment = assessmentRows.find((a) => a.verdict === "identified");
   const evidence = allEvidence.filter((e) => e.assessmentId === null || e.assessmentId === currentAssessment?.id);
   const assessments = assessmentRows.map((a) => ({
     ...a,
+    evidenceDocumentTitle: titleOf(a.evidenceDocumentId),
     evidence: allEvidence.filter((e) => e.assessmentId === a.id),
   }));
 
@@ -167,6 +207,8 @@ router.get("/risks/:id", async (req, res) => {
       evidence,
       actions,
       assessments,
+      reassessmentRequests,
+      statusChanges,
     }),
   );
 });

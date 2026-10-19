@@ -9,9 +9,15 @@ import type { Assessment } from './assessment';
 import type { Document } from './document';
 import type { Evidence } from './evidence';
 import type { MitigationAction } from './mitigationAction';
+import type { ReassessmentRequest } from './reassessmentRequest';
 import type { Risk } from './risk';
+import type { RiskStatusChange } from './riskStatusChange';
 
 export type RiskDetail = Risk & {
+  /** Newest first */
+  reassessmentRequests: ReassessmentRequest[];
+  /** Newest first */
+  statusChanges: RiskStatusChange[];
   sourceDocument: Document;
   /** Current evidence (from the latest assessment that identified the risk) */
   evidence: Evidence[];

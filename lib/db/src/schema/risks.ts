@@ -4,7 +4,8 @@ import { z } from "zod/v4";
 import { documentsTable } from "./documents";
 
 export const RISK_SEVERITIES = ["low", "medium", "high", "critical"] as const;
-export const RISK_STATUSES = ["open", "mitigating", "resolved"] as const;
+// "closed" can only be set through an explicit, recorded human approval.
+export const RISK_STATUSES = ["open", "mitigating", "closed"] as const;
 export const RISK_LIKELIHOODS = ["low", "medium", "high"] as const;
 // How the finding is supported: a direct quotation, an interpretation of
 // several passages, or nothing quotable.

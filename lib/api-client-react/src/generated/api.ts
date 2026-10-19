@@ -20,8 +20,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActionInput,
+  ActionUpdate,
   ActivityItem,
   AnalyzeRequest,
+  Assessment,
+  AssessmentDecisionInput,
   DashboardSummary,
   Document,
   DocumentDetail,
@@ -31,8 +35,13 @@ import type {
   ErrorResponse,
   HealthStatus,
   ListRisksParams,
+  MitigationAction,
+  ReassessmentInput,
+  ReassessmentRequest,
   Risk,
   RiskDetail,
+  RiskStatusChange,
+  RiskStatusChangeInput,
   SystemStatus
 } from './api.schemas';
 
@@ -862,6 +871,527 @@ export function useGetRisk<TData = Awaited<ReturnType<typeof getRisk>>, TError =
 
 
 
+
+export const getCreateActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/risks/${id}/actions`
+}
+
+/**
+ * @summary Create a mitigation action for a risk
+ */
+export const createAction = async (id: number,
+    actionInput: ActionInput, options?: Parameters<typeof customFetch>[1]): Promise<MitigationAction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MitigationAction>(getCreateActionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(actionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateActionMutationKey = () => ['createAction'] as const;
+
+export const getCreateActionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAction>>, TError,CreateActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAction>>, TError,CreateActionMutationVariables, TContext> => {
+
+const mutationKey = getCreateActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAction>>, CreateActionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createAction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateActionMutationResult = NonNullable<Awaited<ReturnType<typeof createAction>>>
+    export type CreateActionMutationBody = BodyType<ActionInput>
+    export type CreateActionMutationError = ErrorType<ErrorResponse>
+    export type CreateActionMutationVariables = {id: number;data: BodyType<ActionInput>}
+
+    /**
+ * @summary Create a mitigation action for a risk
+ */
+export const useCreateAction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAction>>, TError,CreateActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAction>>,
+        TError,
+        CreateActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateActionMutationOptions(options));
+    }
+
+export const getUpdateActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/actions/${id}`
+}
+
+/**
+ * @summary Update a mitigation action. Never changes the risk's status.
+ */
+export const updateAction = async (id: number,
+    actionUpdate: ActionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MitigationAction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MitigationAction>(getUpdateActionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(actionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateActionMutationKey = () => ['updateAction'] as const;
+
+export const getUpdateActionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAction>>, TError,UpdateActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAction>>, TError,UpdateActionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAction>>, UpdateActionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateActionMutationResult = NonNullable<Awaited<ReturnType<typeof updateAction>>>
+    export type UpdateActionMutationBody = BodyType<ActionUpdate>
+    export type UpdateActionMutationError = ErrorType<ErrorResponse>
+    export type UpdateActionMutationVariables = {id: number;data: BodyType<ActionUpdate>}
+
+    /**
+ * @summary Update a mitigation action. Never changes the risk's status.
+ */
+export const useUpdateAction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAction>>, TError,UpdateActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAction>>,
+        TError,
+        UpdateActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateActionMutationOptions(options));
+    }
+
+export const getDeleteActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/actions/${id}`
+}
+
+/**
+ * @summary Delete a mitigation action
+ */
+export const deleteAction = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteActionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteActionMutationKey = () => ['deleteAction'] as const;
+
+export const getDeleteActionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAction>>, TError,DeleteActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAction>>, TError,DeleteActionMutationVariables, TContext> => {
+
+const mutationKey = getDeleteActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAction>>, DeleteActionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteActionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAction>>>
+
+    export type DeleteActionMutationError = ErrorType<ErrorResponse>
+    export type DeleteActionMutationVariables = {id: number}
+
+    /**
+ * @summary Delete a mitigation action
+ */
+export const useDeleteAction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAction>>, TError,DeleteActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAction>>,
+        TError,
+        DeleteActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteActionMutationOptions(options));
+    }
+
+export const getRequestReassessmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/risks/${id}/reassessments`
+}
+
+/**
+ * @summary Reassess a risk against new evidence (file, pasted text, or an existing document). Runs in the background; never changes the risk's status.
+ */
+export const requestReassessment = async (id: number,
+    reassessmentInput: ReassessmentInput, options?: Parameters<typeof customFetch>[1]): Promise<ReassessmentRequest> => {
+    const formData = new FormData();
+if(reassessmentInput.file !== undefined) {
+ formData.append(`file`, reassessmentInput.file);
+ }
+if(reassessmentInput.content !== undefined) {
+ formData.append(`content`, reassessmentInput.content);
+ }
+if(reassessmentInput.title !== undefined) {
+ formData.append(`title`, reassessmentInput.title);
+ }
+if(reassessmentInput.documentId !== undefined) {
+ formData.append(`documentId`, reassessmentInput.documentId.toString())
+ }
+if(reassessmentInput.actionId !== undefined) {
+ formData.append(`actionId`, reassessmentInput.actionId.toString())
+ }
+
+  return customFetch<ReassessmentRequest>(getRequestReassessmentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getRequestReassessmentMutationKey = () => ['requestReassessment'] as const;
+
+export const getRequestReassessmentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestReassessment>>, TError,RequestReassessmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestReassessment>>, TError,RequestReassessmentMutationVariables, TContext> => {
+
+const mutationKey = getRequestReassessmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestReassessment>>, RequestReassessmentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  requestReassessment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestReassessmentMutationResult = NonNullable<Awaited<ReturnType<typeof requestReassessment>>>
+    export type RequestReassessmentMutationBody = BodyType<ReassessmentInput>
+    export type RequestReassessmentMutationError = ErrorType<ErrorResponse>
+    export type RequestReassessmentMutationVariables = {id: number;data: BodyType<ReassessmentInput>}
+
+    /**
+ * @summary Reassess a risk against new evidence (file, pasted text, or an existing document). Runs in the background; never changes the risk's status.
+ */
+export const useRequestReassessment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestReassessment>>, TError,RequestReassessmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestReassessment>>,
+        TError,
+        RequestReassessmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestReassessmentMutationOptions(options));
+    }
+
+export const getDecideAssessmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/assessments/${id}/decision`
+}
+
+/**
+ * @summary Record a human decision (accept or reject) on an AI reassessment recommendation. Does not change the risk's status.
+ */
+export const decideAssessment = async (id: number,
+    assessmentDecisionInput: AssessmentDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<Assessment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Assessment>(getDecideAssessmentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assessmentDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideAssessmentMutationKey = () => ['decideAssessment'] as const;
+
+export const getDecideAssessmentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAssessment>>, TError,DecideAssessmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideAssessment>>, TError,DecideAssessmentMutationVariables, TContext> => {
+
+const mutationKey = getDecideAssessmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideAssessment>>, DecideAssessmentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideAssessment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideAssessmentMutationResult = NonNullable<Awaited<ReturnType<typeof decideAssessment>>>
+    export type DecideAssessmentMutationBody = BodyType<AssessmentDecisionInput>
+    export type DecideAssessmentMutationError = ErrorType<ErrorResponse>
+    export type DecideAssessmentMutationVariables = {id: number;data: BodyType<AssessmentDecisionInput>}
+
+    /**
+ * @summary Record a human decision (accept or reject) on an AI reassessment recommendation. Does not change the risk's status.
+ */
+export const useDecideAssessment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAssessment>>, TError,DecideAssessmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideAssessment>>,
+        TError,
+        DecideAssessmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideAssessmentMutationOptions(options));
+    }
+
+export const getChangeRiskStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/risks/${id}/status`
+}
+
+/**
+ * @summary Change a risk's status with a recorded reason. Closing requires a named approver and a justification.
+ */
+export const changeRiskStatus = async (id: number,
+    riskStatusChangeInput: RiskStatusChangeInput, options?: Parameters<typeof customFetch>[1]): Promise<RiskStatusChange> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RiskStatusChange>(getChangeRiskStatusUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(riskStatusChangeInput)
+  }
+);}
+
+
+
+
+
+export const getChangeRiskStatusMutationKey = () => ['changeRiskStatus'] as const;
+
+export const getChangeRiskStatusMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeRiskStatus>>, TError,ChangeRiskStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeRiskStatus>>, TError,ChangeRiskStatusMutationVariables, TContext> => {
+
+const mutationKey = getChangeRiskStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeRiskStatus>>, ChangeRiskStatusMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  changeRiskStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeRiskStatusMutationResult = NonNullable<Awaited<ReturnType<typeof changeRiskStatus>>>
+    export type ChangeRiskStatusMutationBody = BodyType<RiskStatusChangeInput>
+    export type ChangeRiskStatusMutationError = ErrorType<ErrorResponse>
+    export type ChangeRiskStatusMutationVariables = {id: number;data: BodyType<RiskStatusChangeInput>}
+
+    /**
+ * @summary Change a risk's status with a recorded reason. Closing requires a named approver and a justification.
+ */
+export const useChangeRiskStatus = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeRiskStatus>>, TError,ChangeRiskStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof changeRiskStatus>>,
+        TError,
+        ChangeRiskStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangeRiskStatusMutationOptions(options));
+    }
 
 export const getGetDashboardSummaryUrl = () => {
 

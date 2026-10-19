@@ -282,6 +282,241 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /risks/{id}/actions:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: createAction
+      tags: [actions]
+      summary: Create a mitigation action for a risk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MitigationAction"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Risk not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /actions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateAction
+      tags: [actions]
+      summary: Update a mitigation action. Never changes the risk's status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MitigationAction"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Action not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAction
+      tags: [actions]
+      summary: Delete a mitigation action
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Action not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /risks/{id}/reassessments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: requestReassessment
+      tags: [reassessment]
+      summary: Reassess a risk against new evidence (file, pasted text, or an existing document). Runs in the background; never changes the risk's status.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ReassessmentInput"
+      responses:
+        "202":
+          description: Reassessment started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReassessmentRequest"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Risk, action or document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A reassessment is already running for this risk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Evidence too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Evidence could not be read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /assessments/{id}/decision:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: decideAssessment
+      tags: [reassessment]
+      summary: Record a human decision (accept or reject) on an AI reassessment recommendation. Does not change the risk's status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentDecisionInput"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assessment"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Assessment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Not a reassessment, or already decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /risks/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: changeRiskStatus
+      tags: [risks]
+      summary: Change a risk's status with a recorded reason. Closing requires a named approver and a justification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskStatusChangeInput"
+      responses:
+        "200":
+          description: Status changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskStatusChange"
+        "400":
+          description: Invalid input, or closing without approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Risk or assessment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Status unchanged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -408,7 +643,7 @@ components:
     Document:
       type: object
       required:
-        [id, title, filename, charCount, sourceType, fileSize, pageCount, status, analysisError, analysisModel, chunksTotal, chunksDone, analysisStartedAt, analyzedAt, riskCount, createdAt]
+        [id, title, filename, charCount, sourceType, purpose, fileSize, pageCount, status, analysisError, analysisModel, chunksTotal, chunksDone, analysisStartedAt, analyzedAt, riskCount, createdAt]
       properties:
         id:
           type: integer
@@ -416,6 +651,10 @@ components:
           type: string
         filename:
           type: ["string", "null"]
+        purpose:
+          type: string
+          enum: [analysis, evidence]
+          description: evidence = submitted as follow-up evidence for a reassessment
         charCount:
           type: integer
         sourceType:
@@ -485,7 +724,8 @@ components:
       enum: [low, medium, high, critical]
     RiskStatus:
       type: string
-      enum: [open, mitigating, resolved]
+      enum: [open, mitigating, closed]
+      description: closed is only set through an explicit human approval
     RiskLikelihood:
       type: string
       enum: [low, medium, high]
@@ -610,10 +850,51 @@ components:
           format: date-time
     ActionStatus:
       type: string
-      enum: [todo, in_progress, done]
+      enum: [open, in_progress, submitted_for_review]
+    ActionInput:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+          minLength: 3
+          maxLength: 2000
+        owner:
+          type: ["string", "null"]
+          maxLength: 200
+        dueDate:
+          type: ["string", "null"]
+          description: Calendar date, YYYY-MM-DD
+        status:
+          $ref: "#/components/schemas/ActionStatus"
+        evidenceNote:
+          type: ["string", "null"]
+          maxLength: 4000
+        evidenceDocumentId:
+          type: ["integer", "null"]
+    ActionUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 3
+          maxLength: 2000
+        owner:
+          type: ["string", "null"]
+          maxLength: 200
+        dueDate:
+          type: ["string", "null"]
+          description: Calendar date, YYYY-MM-DD
+        status:
+          $ref: "#/components/schemas/ActionStatus"
+        evidenceNote:
+          type: ["string", "null"]
+          maxLength: 4000
+        evidenceDocumentId:
+          type: ["integer", "null"]
     MitigationAction:
       type: object
-      required: [id, riskId, description, owner, dueDate, status, createdAt]
+      required: [id, riskId, description, owner, dueDate, status, evidenceNote, evidenceDocumentId, evidenceDocumentTitle, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -628,15 +909,140 @@ components:
           description: Calendar date, YYYY-MM-DD
         status:
           $ref: "#/components/schemas/ActionStatus"
+        evidenceNote:
+          type: ["string", "null"]
+          description: Supporting evidence described by the owner
+        evidenceDocumentId:
+          type: ["integer", "null"]
+        evidenceDocumentTitle:
+          type: ["string", "null"]
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
     AssessmentVerdict:
       type: string
-      enum: [identified, resolved, partially_resolved, not_resolved, insufficient_evidence, not_detected]
+      enum: [identified, not_detected, resolved, partially_resolved, unresolved, needs_human_review]
+      description: identified/not_detected come from document analysis; the others are reassessment outcomes (AI recommendations)
+    ReassessmentOutcome:
+      type: string
+      enum: [resolved, partially_resolved, unresolved, needs_human_review]
+    EvidenceType:
+      type: string
+      enum: [operating_evidence, policy_or_design, plan_or_promise, unrelated, mixed]
+      description: Only operating_evidence (proof a control is working) can support resolution
+    HumanDecision:
+      type: string
+      enum: [accepted, rejected]
+    ReassessmentInput:
+      type: object
+      description: Provide exactly one of file, content, or documentId
+      properties:
+        file:
+          type: string
+          format: binary
+        content:
+          type: string
+          description: Pasted follow-up evidence text
+        title:
+          type: string
+          maxLength: 200
+        documentId:
+          type: integer
+          description: Use an existing document as the evidence
+        actionId:
+          type: integer
+          description: Mitigation action the evidence relates to (defaults to the most recently updated action)
+    ReassessmentRequestStatus:
+      type: string
+      enum: [pending, completed, failed]
+    ReassessmentRequest:
+      type: object
+      required: [id, riskId, actionId, evidenceDocumentId, evidenceDocumentTitle, status, error, assessmentId, model, createdAt, finishedAt]
+      properties:
+        id:
+          type: integer
+        riskId:
+          type: integer
+        actionId:
+          type: ["integer", "null"]
+        evidenceDocumentId:
+          type: integer
+        evidenceDocumentTitle:
+          type: string
+        status:
+          $ref: "#/components/schemas/ReassessmentRequestStatus"
+        error:
+          type: ["string", "null"]
+        assessmentId:
+          type: ["integer", "null"]
+        model:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: ["string", "null"]
+          format: date-time
+    AssessmentDecisionInput:
+      type: object
+      required: [decision, decidedBy]
+      properties:
+        decision:
+          $ref: "#/components/schemas/HumanDecision"
+        decidedBy:
+          type: string
+          minLength: 2
+          maxLength: 200
+        note:
+          type: ["string", "null"]
+          maxLength: 2000
+    RiskStatusChangeInput:
+      type: object
+      required: [status, changedBy]
+      properties:
+        status:
+          $ref: "#/components/schemas/RiskStatus"
+        changedBy:
+          type: string
+          minLength: 2
+          maxLength: 200
+        note:
+          type: ["string", "null"]
+          maxLength: 2000
+          description: Required (min 10 characters) when closing
+        assessmentId:
+          type: ["integer", "null"]
+          description: Reassessment this decision is based on
+        approveClosure:
+          type: boolean
+          description: Must be true to close the risk (explicit human approval)
+    RiskStatusChange:
+      type: object
+      required: [id, riskId, fromStatus, toStatus, changedBy, note, assessmentId, createdAt]
+      properties:
+        id:
+          type: integer
+        riskId:
+          type: integer
+        fromStatus:
+          $ref: "#/components/schemas/RiskStatus"
+        toStatus:
+          $ref: "#/components/schemas/RiskStatus"
+        changedBy:
+          type: string
+        note:
+          type: ["string", "null"]
+        assessmentId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
     Assessment:
       type: object
-      required: [id, riskId, kind, verdict, rationale, confidence, evidenceDocumentId, model, analysisRunId, severity, likelihood, evidenceBasis, evidence, createdAt]
+      required: [id, riskId, kind, verdict, rationale, confidence, evidenceDocumentId, evidenceDocumentTitle, model, analysisRunId, severity, likelihood, evidenceBasis, evidence, actionId, aiVerdict, evidenceType, requirementsMet, remainingGaps, nextSteps, guardrailNotes, decision, decidedBy, decisionNote, decidedAt, createdAt]
       properties:
         id:
           type: integer
@@ -674,6 +1080,48 @@ components:
           description: Quotations cited by this assessment
           items:
             $ref: "#/components/schemas/Evidence"
+        evidenceDocumentTitle:
+          type: ["string", "null"]
+        actionId:
+          type: ["integer", "null"]
+          description: Reassessment only - the mitigation action evaluated
+        aiVerdict:
+          description: Reassessment only - the AI's outcome before server rules were applied
+          oneOf:
+            - $ref: "#/components/schemas/ReassessmentOutcome"
+            - type: "null"
+        evidenceType:
+          oneOf:
+            - $ref: "#/components/schemas/EvidenceType"
+            - type: "null"
+        requirementsMet:
+          type: ["array", "null"]
+          items:
+            type: string
+        remainingGaps:
+          type: ["array", "null"]
+          items:
+            type: string
+        nextSteps:
+          type: ["array", "null"]
+          items:
+            type: string
+        guardrailNotes:
+          type: ["array", "null"]
+          description: Why the server changed the AI's outcome
+          items:
+            type: string
+        decision:
+          oneOf:
+            - $ref: "#/components/schemas/HumanDecision"
+            - type: "null"
+        decidedBy:
+          type: ["string", "null"]
+        decisionNote:
+          type: ["string", "null"]
+        decidedAt:
+          type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -681,8 +1129,18 @@ components:
       allOf:
         - $ref: "#/components/schemas/Risk"
         - type: object
-          required: [evidence, actions, assessments, sourceDocument]
+          required: [evidence, actions, assessments, sourceDocument, reassessmentRequests, statusChanges]
           properties:
+            reassessmentRequests:
+              description: Newest first
+              type: array
+              items:
+                $ref: "#/components/schemas/ReassessmentRequest"
+            statusChanges:
+              description: Newest first
+              type: array
+              items:
+                $ref: "#/components/schemas/RiskStatusChange"
             sourceDocument:
               $ref: "#/components/schemas/Document"
             evidence:
@@ -712,13 +1170,13 @@ components:
           type: integer
     StatusCounts:
       type: object
-      required: [open, mitigating, resolved]
+      required: [open, mitigating, closed]
       properties:
         open:
           type: integer
         mitigating:
           type: integer
-        resolved:
+        closed:
           type: integer
     DashboardSummary:
       type: object

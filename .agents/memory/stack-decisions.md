@@ -11,3 +11,5 @@ description: Why Postgres+Drizzle (not SQLite+Prisma), which ECC skills are inst
   **Why:** the template client throws at import time without env vars (the user requires a clear "missing credentials" error), and it brings chat/voice tables and packages this app does not need ("avoid unnecessary dependencies").
 - Re-analysis never deletes or replaces risks: findings are matched to existing risks (AI-suggested id validated server-side, else identical title) and history is appended as assessments.
   **Why:** the Phase 3 brief requires stable ids and preserved earlier assessments; the Phase 2 delete-and-replace approach violated both.
+- Risk closure is human-only: no automated path (actions, reassessment, accepting an AI recommendation) may change risk status; reassessment rules may only downgrade an AI "resolved".
+  **Why:** the Phase 4 brief requires explicit human approval to close and that promises/policies/insufficient evidence never count as resolution.

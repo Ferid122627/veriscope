@@ -26,12 +26,12 @@ router.get("/dashboard/summary", async (_req, res) => {
         critical: sql<number>`count(*) filter (where ${risksTable.severity} = 'critical')::int`,
         open: sql<number>`count(*) filter (where ${risksTable.status} = 'open')::int`,
         mitigating: sql<number>`count(*) filter (where ${risksTable.status} = 'mitigating')::int`,
-        resolved: sql<number>`count(*) filter (where ${risksTable.status} = 'resolved')::int`,
+        closed: sql<number>`count(*) filter (where ${risksTable.status} = 'closed')::int`,
         review: sql<number>`count(*) filter (where ${risksTable.reviewRequired})::int`,
       })
       .from(risksTable),
     db
-      .select({ open: sql<number>`count(*) filter (where ${mitigationActionsTable.status} <> 'done')::int` })
+      .select({ open: sql<number>`count(*) filter (where ${mitigationActionsTable.status} in ('open', 'in_progress'))::int` })
       .from(mitigationActionsTable),
     // Only each risk's current evidence set, so re-analysis does not double-count quotes.
     db.execute<{ total: number; verified: number }>(sql`
@@ -55,7 +55,7 @@ router.get("/dashboard/summary", async (_req, res) => {
         high: risks!.high,
         critical: risks!.critical,
       },
-      risksByStatus: { open: risks!.open, mitigating: risks!.mitigating, resolved: risks!.resolved },
+      risksByStatus: { open: risks!.open, mitigating: risks!.mitigating, closed: risks!.closed },
       openActions: actions!.open,
       totalEvidence: evidence!.total,
       verifiedEvidence: evidence!.verified,

@@ -35,6 +35,7 @@ export const ListDocumentsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -70,6 +71,7 @@ export const CreateDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -119,6 +121,7 @@ export const UploadDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -167,6 +170,7 @@ export const AnalyzeDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -194,6 +198,7 @@ export const GetDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -242,7 +247,7 @@ export const DeleteDocumentResponse = zod.void()
  */
 export const ListRisksQueryParams = zod.object({
   "severity": zod.enum(['low', 'medium', 'high', 'critical']).optional(),
-  "status": zod.enum(['open', 'mitigating', 'resolved']).optional(),
+  "status": zod.enum(['open', 'mitigating', 'closed']).optional(),
   "documentId": zod.coerce.number().int().optional(),
   "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).optional(),
   "reviewRequired": zod.coerce.boolean().optional()
@@ -265,7 +270,7 @@ export const ListRisksResponseItem = zod.object({
   "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
-  "status": zod.enum(['open', 'mitigating', 'resolved']),
+  "status": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
   "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
   "verifiedEvidenceCount": zod.number().int(),
   "lastAssessedAt": zod.coerce.date().nullable(),
@@ -300,7 +305,7 @@ export const GetRiskResponse = zod.object({
   "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
-  "status": zod.enum(['open', 'mitigating', 'resolved']),
+  "status": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
   "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
   "verifiedEvidenceCount": zod.number().int(),
   "lastAssessedAt": zod.coerce.date().nullable(),
@@ -308,10 +313,34 @@ export const GetRiskResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
+  "reassessmentRequests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "actionId": zod.number().int().nullable(),
+  "evidenceDocumentId": zod.number().int(),
+  "evidenceDocumentTitle": zod.string(),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "error": zod.string().nullable(),
+  "assessmentId": zod.number().int().nullable(),
+  "model": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})).describe('Newest first'),
+  "statusChanges": zod.array(zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "fromStatus": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
+  "toStatus": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
+  "changedBy": zod.string(),
+  "note": zod.string().nullable(),
+  "assessmentId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date()
+})).describe('Newest first'),
   "sourceDocument": zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "filename": zod.string().nullable(),
+  "purpose": zod.enum(['analysis', 'evidence']).describe('evidence = submitted as follow-up evidence for a reassessment'),
   "charCount": zod.number().int(),
   "sourceType": zod.enum(['text', 'pdf', 'docx']),
   "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
@@ -349,14 +378,18 @@ export const GetRiskResponse = zod.object({
   "description": zod.string(),
   "owner": zod.string().nullable(),
   "dueDate": zod.string().nullable().describe('Calendar date, YYYY-MM-DD'),
-  "status": zod.enum(['todo', 'in_progress', 'done']),
-  "createdAt": zod.coerce.date()
+  "status": zod.enum(['open', 'in_progress', 'submitted_for_review']),
+  "evidenceNote": zod.string().nullable().describe('Supporting evidence described by the owner'),
+  "evidenceDocumentId": zod.number().int().nullable(),
+  "evidenceDocumentTitle": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })),
   "assessments": zod.array(zod.object({
   "id": zod.number().int(),
   "riskId": zod.number().int(),
   "kind": zod.enum(['initial', 'reanalysis', 'reassessment']),
-  "verdict": zod.enum(['identified', 'resolved', 'partially_resolved', 'not_resolved', 'insufficient_evidence', 'not_detected']),
+  "verdict": zod.enum(['identified', 'not_detected', 'resolved', 'partially_resolved', 'unresolved', 'needs_human_review']).describe('identified/not_detected come from document analysis; the others are reassessment outcomes (AI recommendations)'),
   "rationale": zod.string(),
   "confidence": zod.number().nullable(),
   "evidenceDocumentId": zod.number().int().nullable(),
@@ -382,9 +415,245 @@ export const GetRiskResponse = zod.object({
   "verified": zod.boolean().describe('True only if the quote was found verbatim in the source document text'),
   "createdAt": zod.coerce.date()
 }).describe('A verbatim quote from a source document, located by character offsets')).describe('Quotations cited by this assessment'),
+  "evidenceDocumentTitle": zod.string().nullable(),
+  "actionId": zod.number().int().nullable().describe('Reassessment only - the mitigation action evaluated'),
+  "aiVerdict": zod.union([zod.enum(['resolved', 'partially_resolved', 'unresolved', 'needs_human_review']),zod.null()]).describe('Reassessment only - the AI\'s outcome before server rules were applied'),
+  "evidenceType": zod.union([zod.enum(['operating_evidence', 'policy_or_design', 'plan_or_promise', 'unrelated', 'mixed']).describe('Only operating_evidence (proof a control is working) can support resolution'),zod.null()]),
+  "requirementsMet": zod.array(zod.string()).nullable(),
+  "remainingGaps": zod.array(zod.string()).nullable(),
+  "nextSteps": zod.array(zod.string()).nullable(),
+  "guardrailNotes": zod.array(zod.string()).nullable().describe('Why the server changed the AI\'s outcome'),
+  "decision": zod.union([zod.enum(['accepted', 'rejected']),zod.null()]),
+  "decidedBy": zod.string().nullable(),
+  "decisionNote": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
 }))
 }))
+
+
+/**
+ * @summary Create a mitigation action for a risk
+ */
+export const CreateActionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createActionBodyDescriptionMin = 3;
+export const createActionBodyDescriptionMax = 2000;
+
+export const createActionBodyOwnerMax = 200;
+
+export const createActionBodyEvidenceNoteMax = 4000;
+
+
+
+export const CreateActionBody = zod.object({
+  "description": zod.string().min(createActionBodyDescriptionMin).max(createActionBodyDescriptionMax),
+  "owner": zod.string().max(createActionBodyOwnerMax).nullish(),
+  "dueDate": zod.string().nullish().describe('Calendar date, YYYY-MM-DD'),
+  "status": zod.enum(['open', 'in_progress', 'submitted_for_review']).optional(),
+  "evidenceNote": zod.string().max(createActionBodyEvidenceNoteMax).nullish(),
+  "evidenceDocumentId": zod.number().int().nullish()
+})
+
+export const CreateActionResponse = zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "description": zod.string(),
+  "owner": zod.string().nullable(),
+  "dueDate": zod.string().nullable().describe('Calendar date, YYYY-MM-DD'),
+  "status": zod.enum(['open', 'in_progress', 'submitted_for_review']),
+  "evidenceNote": zod.string().nullable().describe('Supporting evidence described by the owner'),
+  "evidenceDocumentId": zod.number().int().nullable(),
+  "evidenceDocumentTitle": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a mitigation action. Never changes the risk's status.
+ */
+export const UpdateActionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateActionBodyDescriptionMin = 3;
+export const updateActionBodyDescriptionMax = 2000;
+
+export const updateActionBodyOwnerMax = 200;
+
+export const updateActionBodyEvidenceNoteMax = 4000;
+
+
+
+export const UpdateActionBody = zod.object({
+  "description": zod.string().min(updateActionBodyDescriptionMin).max(updateActionBodyDescriptionMax).optional(),
+  "owner": zod.string().max(updateActionBodyOwnerMax).nullish(),
+  "dueDate": zod.string().nullish().describe('Calendar date, YYYY-MM-DD'),
+  "status": zod.enum(['open', 'in_progress', 'submitted_for_review']).optional(),
+  "evidenceNote": zod.string().max(updateActionBodyEvidenceNoteMax).nullish(),
+  "evidenceDocumentId": zod.number().int().nullish()
+})
+
+export const UpdateActionResponse = zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "description": zod.string(),
+  "owner": zod.string().nullable(),
+  "dueDate": zod.string().nullable().describe('Calendar date, YYYY-MM-DD'),
+  "status": zod.enum(['open', 'in_progress', 'submitted_for_review']),
+  "evidenceNote": zod.string().nullable().describe('Supporting evidence described by the owner'),
+  "evidenceDocumentId": zod.number().int().nullable(),
+  "evidenceDocumentTitle": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a mitigation action
+ */
+export const DeleteActionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteActionResponse = zod.void()
+
+
+/**
+ * @summary Reassess a risk against new evidence (file, pasted text, or an existing document). Runs in the background; never changes the risk's status.
+ */
+export const RequestReassessmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const requestReassessmentBodyTitleMax = 200;
+
+
+
+export const RequestReassessmentBody = zod.object({
+  "file": zod.instanceof(Blob).optional(),
+  "content": zod.string().optional().describe('Pasted follow-up evidence text'),
+  "title": zod.string().max(requestReassessmentBodyTitleMax).optional(),
+  "documentId": zod.number().int().optional().describe('Use an existing document as the evidence'),
+  "actionId": zod.number().int().optional().describe('Mitigation action the evidence relates to (defaults to the most recently updated action)')
+}).describe('Provide exactly one of file, content, or documentId')
+
+export const RequestReassessmentResponse = zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "actionId": zod.number().int().nullable(),
+  "evidenceDocumentId": zod.number().int(),
+  "evidenceDocumentTitle": zod.string(),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "error": zod.string().nullable(),
+  "assessmentId": zod.number().int().nullable(),
+  "model": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Record a human decision (accept or reject) on an AI reassessment recommendation. Does not change the risk's status.
+ */
+export const DecideAssessmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const decideAssessmentBodyDecidedByMin = 2;
+export const decideAssessmentBodyDecidedByMax = 200;
+
+export const decideAssessmentBodyNoteMax = 2000;
+
+
+
+export const DecideAssessmentBody = zod.object({
+  "decision": zod.enum(['accepted', 'rejected']),
+  "decidedBy": zod.string().min(decideAssessmentBodyDecidedByMin).max(decideAssessmentBodyDecidedByMax),
+  "note": zod.string().max(decideAssessmentBodyNoteMax).nullish()
+})
+
+export const DecideAssessmentResponse = zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "kind": zod.enum(['initial', 'reanalysis', 'reassessment']),
+  "verdict": zod.enum(['identified', 'not_detected', 'resolved', 'partially_resolved', 'unresolved', 'needs_human_review']).describe('identified/not_detected come from document analysis; the others are reassessment outcomes (AI recommendations)'),
+  "rationale": zod.string(),
+  "confidence": zod.number().nullable(),
+  "evidenceDocumentId": zod.number().int().nullable(),
+  "model": zod.string().nullable(),
+  "analysisRunId": zod.number().int().nullable(),
+  "severity": zod.union([zod.enum(['low', 'medium', 'high', 'critical']),zod.null()]),
+  "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
+  "evidenceBasis": zod.union([zod.enum(['direct', 'inferred', 'none']).describe('direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support'),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "documentId": zod.number().int(),
+  "documentTitle": zod.string(),
+  "assessmentId": zod.number().int().nullable(),
+  "quote": zod.string().describe('Exact source characters when verified; otherwise the unverified claimed text'),
+  "claimedQuote": zod.string().nullable().describe('The quotation exactly as the AI returned it'),
+  "matchType": zod.enum(['exact', 'normalized', 'not_found']),
+  "normalizations": zod.array(zod.string()).describe('Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes)'),
+  "matchCount": zod.number().int().describe('Number of places the quotation occurs in the document; more than 1 means the location is ambiguous'),
+  "startOffset": zod.number().int().nullable(),
+  "endOffset": zod.number().int().nullable(),
+  "pageNumber": zod.number().int().nullable().describe('1-based PDF page containing the quote, when known'),
+  "verified": zod.boolean().describe('True only if the quote was found verbatim in the source document text'),
+  "createdAt": zod.coerce.date()
+}).describe('A verbatim quote from a source document, located by character offsets')).describe('Quotations cited by this assessment'),
+  "evidenceDocumentTitle": zod.string().nullable(),
+  "actionId": zod.number().int().nullable().describe('Reassessment only - the mitigation action evaluated'),
+  "aiVerdict": zod.union([zod.enum(['resolved', 'partially_resolved', 'unresolved', 'needs_human_review']),zod.null()]).describe('Reassessment only - the AI\'s outcome before server rules were applied'),
+  "evidenceType": zod.union([zod.enum(['operating_evidence', 'policy_or_design', 'plan_or_promise', 'unrelated', 'mixed']).describe('Only operating_evidence (proof a control is working) can support resolution'),zod.null()]),
+  "requirementsMet": zod.array(zod.string()).nullable(),
+  "remainingGaps": zod.array(zod.string()).nullable(),
+  "nextSteps": zod.array(zod.string()).nullable(),
+  "guardrailNotes": zod.array(zod.string()).nullable().describe('Why the server changed the AI\'s outcome'),
+  "decision": zod.union([zod.enum(['accepted', 'rejected']),zod.null()]),
+  "decidedBy": zod.string().nullable(),
+  "decisionNote": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Change a risk's status with a recorded reason. Closing requires a named approver and a justification.
+ */
+export const ChangeRiskStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const changeRiskStatusBodyChangedByMin = 2;
+export const changeRiskStatusBodyChangedByMax = 200;
+
+export const changeRiskStatusBodyNoteMax = 2000;
+
+
+
+export const ChangeRiskStatusBody = zod.object({
+  "status": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
+  "changedBy": zod.string().min(changeRiskStatusBodyChangedByMin).max(changeRiskStatusBodyChangedByMax),
+  "note": zod.string().max(changeRiskStatusBodyNoteMax).nullish().describe('Required (min 10 characters) when closing'),
+  "assessmentId": zod.number().int().nullish().describe('Reassessment this decision is based on'),
+  "approveClosure": zod.boolean().optional().describe('Must be true to close the risk (explicit human approval)')
+})
+
+export const ChangeRiskStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "fromStatus": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
+  "toStatus": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
+  "changedBy": zod.string(),
+  "note": zod.string().nullable(),
+  "assessmentId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date()
+})
 
 
 /**
@@ -402,7 +671,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "risksByStatus": zod.object({
   "open": zod.number().int(),
   "mitigating": zod.number().int(),
-  "resolved": zod.number().int()
+  "closed": zod.number().int()
 }),
   "openActions": zod.number().int(),
   "totalEvidence": zod.number().int(),

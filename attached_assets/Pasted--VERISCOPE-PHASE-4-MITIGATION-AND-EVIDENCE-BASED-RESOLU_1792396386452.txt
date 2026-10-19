@@ -1,0 +1,56 @@
+# VERISCOPE — PHASE 4: MITIGATION AND EVIDENCE-BASED RESOLUTION
+
+Continue from the existing codebase. This phase implements Veriscope's key differentiator: checking whether a risk has actually been resolved using new evidence.
+
+## Mitigation actions
+Allow a user to create an action linked to a specific risk, with:
+- Action description.
+- Responsible person or owner.
+- Due date.
+- Status: Open, In Progress, or Submitted for Review.
+- Supporting evidence.
+- Creation and update timestamps.
+
+Persist these actions in the database and connect the frontend to real backend operations.
+
+## Reassessment workflow
+For an existing risk, allow the user to upload a new document or submit relevant follow-up evidence.
+
+The system must:
+1. Retrieve the original risk and its verified supporting evidence.
+2. Retrieve the relevant mitigation action.
+3. Analyze the new evidence against the specific original risk and the action's intended outcome.
+4. Validate any quoted new evidence against the actual new document text.
+5. Produce a structured reassessment with an outcome, supporting evidence, remaining gaps, and an explanation.
+6. Store the reassessment as a new historical record linked to the original risk.
+7. Display the old and new assessments so the user can compare them.
+
+Use these reassessment outcomes:
+- Resolved — sufficient verified evidence supports resolution.
+- Partially Resolved — some requirements are met, but gaps remain.
+- Unresolved — the risk remains or the evidence does not address it.
+- Needs Human Review — evidence is ambiguous, contradictory, or cannot be reliably evaluated.
+
+## Critical rules
+- Submitting an action must never automatically close a risk.
+- Uploading a document must never automatically close a risk.
+- A promise, policy statement, or action description is not automatically proof that a control is operating effectively.
+- Insufficient evidence must not be treated as successful resolution.
+- Preserve the previous status and assessment history.
+- Require explicit human approval before changing the final risk status to Closed.
+- Clearly distinguish the AI's recommendation from a human-approved decision.
+- If the AI provider fails, preserve existing data and do not change the risk status.
+
+## UI
+Provide a clear reassessment view showing:
+- Original risk and source evidence.
+- Mitigation action and owner.
+- New evidence and its verification status.
+- Reassessment outcome.
+- Remaining gaps and recommended next steps.
+- Assessment history and human approval status.
+
+## Acceptance tests
+Test both a case where valid new evidence supports resolution and a case where the new evidence is irrelevant or insufficient. Also test ambiguous evidence and an AI provider failure.
+
+The first case may recommend resolution; the second must not. Never fake these outcomes or use hardcoded AI results in the actual workflow.

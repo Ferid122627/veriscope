@@ -6,11 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * closed is only set through an explicit human approval
+ */
 export type RiskStatus = typeof RiskStatus[keyof typeof RiskStatus];
 
 
 export const RiskStatus = {
   open: 'open',
   mitigating: 'mitigating',
-  resolved: 'resolved',
+  closed: 'closed',
 } as const;

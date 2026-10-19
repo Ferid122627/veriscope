@@ -207,7 +207,7 @@ describe("AI analysis", () => {
     expect(unverified).toMatchObject({ startOffset: null, endOffset: null, pageNumber: null });
 
     expect(detail.actions).toHaveLength(1);
-    expect(detail.actions[0]).toMatchObject({ status: "todo", description: expect.stringMatching(/dual approval/) });
+    expect(detail.actions[0]).toMatchObject({ status: "open", description: expect.stringMatching(/dual approval/) });
     expect(detail.assessments).toHaveLength(1);
     expect(detail.assessments[0]).toMatchObject({ kind: "initial", verdict: "identified", confidence: 0.9 });
 

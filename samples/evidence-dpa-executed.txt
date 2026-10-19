@@ -1,0 +1,10 @@
+Northwind Logistics - Data Processing Agreement: Execution Record
+Prepared by Legal Operations, 14 October 2026.
+
+The Data Processing Agreement between our company (controller) and Northwind Logistics B.V. (processor) was signed by both parties on 2 October 2026 and is in force from that date. Signatories: M. de Vries, Managing Director, Northwind Logistics B.V.; R. Alves, General Counsel.
+
+The agreement specifies the permitted processing (shipment and customer address data for delivery purposes only), required security measures (Annex 2), the approved subprocessor list (Annex 3) and our audit rights (clause 9).
+Northwind must notify us of any personal data breach within 24 hours of becoming aware of it (clause 11).
+Transfers of personal data to the Singapore data centre are covered by the EU Standard Contractual Clauses (Module 2), attached as Annex 4 and signed on 2 October 2026.
+
+Legal Operations reviewed the signed copy on 6 October 2026 and confirmed all annexes are complete. The executed agreement is stored in the contract repository under reference DPA-2026-117.

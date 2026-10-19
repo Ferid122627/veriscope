@@ -143,23 +143,23 @@ export function effectiveBasis(risk: Pick<AiRisk, "evidenceBasis" | "evidenceQuo
   return risk.evidenceBasis === "none" ? "inferred" : risk.evidenceBasis;
 }
 
-function userFacingError(err: unknown): string {
+export function userFacingError(err: unknown, task = "analysis"): string {
   if (err instanceof AiNotConfiguredError || err instanceof MalformedAiOutputError) return err.message;
   const status = (err as { status?: number })?.status;
-  if (status === 429) return "The AI provider is rate-limiting requests. Wait a minute and retry the analysis.";
-  if (typeof status === "number") return `The AI provider returned an error (HTTP ${status}). Retry the analysis.`;
-  if ((err as Error)?.name === "APIConnectionTimeoutError") return "The AI provider timed out. Retry the analysis.";
-  if ((err as Error)?.name === "APIConnectionError") return "Could not reach the AI provider. Retry the analysis.";
-  return "The analysis failed unexpectedly. Retry the analysis.";
+  if (status === 429) return `The AI provider is rate-limiting requests. Wait a minute and retry the ${task}.`;
+  if (typeof status === "number") return `The AI provider returned an error (HTTP ${status}). Retry the ${task}.`;
+  if ((err as Error)?.name === "APIConnectionTimeoutError") return `The AI provider timed out. Retry the ${task}.`;
+  if ((err as Error)?.name === "APIConnectionError") return `Could not reach the AI provider. Retry the ${task}.`;
+  return `The ${task} failed unexpectedly. Retry the ${task}.`;
 }
 
-interface VerifiedQuote {
+export interface VerifiedQuote {
   claimed: string;
   result: QuoteVerification;
 }
 
 /** Verify each quote against the source; drop repeats that resolve to the same span. */
-function verifyQuotes(content: string, quotes: string[]): VerifiedQuote[] {
+export function verifyQuotes(content: string, quotes: string[]): VerifiedQuote[] {
   const seen = new Set<string>();
   const out: VerifiedQuote[] = [];
   for (const claimed of quotes) {
