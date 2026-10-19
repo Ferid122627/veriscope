@@ -6,6 +6,7 @@ import {
   useGetDocument, useListRisks, useAnalyzeDocument, getGetDocumentQueryKey, getListRisksQueryKey,
 } from "@workspace/api-client-react";
 import type { DocumentDetail as Doc } from "@workspace/api-client-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader, Panel, Skel, EmptyState, ErrorState, StatusChip, SeverityChip, DocStatus, Chip, BackLink, num, stamp, ago, fmtBytes, btnGhost, btnPrimary, apiErrorMessage } from "@/components/kit";
 import { useInvalidateAll } from "@/hooks/use-invalidate";
@@ -188,6 +189,7 @@ export default function DocumentDetail() {
   }, [range, content]);
 
   const rendered = useMemo(() => renderText(content, doc.data?.pageOffsets ?? null, range, markRef), [content, doc.data?.pageOffsets, range]);
+  const renderedLarge = useMemo(() => (enlarged ? renderText(content, doc.data?.pageOffsets ?? null, range, null) : null), [enlarged, content, doc.data?.pageOffsets, range]);
 
   if (!valid || (doc.isError && (doc.error as { status?: number })?.status === 404)) {
     return <EmptyState testId="empty-document-missing" icon={<ShieldAlert className="size-5" />} title="Document not found" body="It may have been deleted, along with everything derived from it." action={<Link href="/documents" className={btnGhost}>Back to documents</Link>} />;
@@ -223,23 +225,36 @@ export default function DocumentDetail() {
               <h2 className="text-[15px] font-semibold">Document text</h2>
               <div className="flex items-center gap-3">
                 <span className="hidden text-[12.5px] text-muted-foreground sm:inline">Exactly as added</span>
-                <button type="button" onClick={() => setEnlarged((v) => !v)} aria-pressed={enlarged} data-testid="button-toggle-text-size"
+                <button type="button" onClick={() => setEnlarged(true)} data-testid="button-toggle-text-size"
                   className="group inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12.5px] font-medium text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary active:scale-95">
-                  <span className="relative size-3.5">
-                    <Maximize2 className={`absolute inset-0 size-3.5 transition-all duration-300 ${enlarged ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`} aria-hidden />
-                    <Minimize2 className={`absolute inset-0 size-3.5 transition-all duration-300 ${enlarged ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`} aria-hidden />
-                  </span>
-                  {enlarged ? "Normal size" : "Enlarge text"}
+                  <Maximize2 className="size-3.5 transition-transform duration-300 group-hover:scale-110" aria-hidden />
+                  Enlarge
                 </button>
               </div>
             </div>
             {doc.isLoading ? <div className="space-y-2.5 p-6">{Array.from({ length: 12 }).map((_, i) => <Skel key={i} className="h-3.5" />)}</div> : (
               <div data-testid="text-document-content"
-                className={`overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-quote text-foreground/90 transition-[font-size,line-height,max-height] duration-500 ease-out ${enlarged ? "max-h-[90vh] text-[20px] leading-[1.9]" : "max-h-[75vh] text-[16px] leading-[1.75]"}`}>
+                className="max-h-[75vh] overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-quote text-[16px] leading-[1.75] text-foreground/90">
                 {rendered}
               </div>
             )}
           </article>
+          <Dialog open={enlarged} onOpenChange={setEnlarged}>
+            <DialogContent className="flex h-[92vh] w-[94vw] max-w-[94vw] max-h-[92vh] flex-col gap-0 overflow-hidden p-0 duration-300" data-testid="dialog-document-text">
+              <div className="flex items-center gap-3 border-b border-border px-6 py-3.5 pr-14">
+                <Minimize2 className="size-4 text-muted-foreground" aria-hidden />
+                <div className="min-w-0">
+                  <DialogTitle className="truncate text-[15px] font-semibold">Document text{d ? ` · ${d.title}` : ""}</DialogTitle>
+                  <DialogDescription className="text-[12.5px] text-muted-foreground">Exactly as added. Press Esc or the × to close.</DialogDescription>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto px-6 py-8 md:px-16">
+                <div className="mx-auto max-w-[960px] whitespace-pre-wrap break-words font-quote text-[18px] leading-[1.85] text-foreground/90" data-testid="text-document-content-large">
+                  {renderedLarge}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {d && <div className="min-w-0 lg:col-start-1 lg:row-start-2"><AnalysisPanel doc={d} riskCount={risks.data?.length ?? d.riskCount} /></div>}
