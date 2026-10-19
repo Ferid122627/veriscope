@@ -60,7 +60,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Evidence documents for reassessment are capped at 100,000 characters (sent in one request) and stored with `purpose = evidence`.
 - Company rules (playbook): one row in `playbooks` (`GET/POST/DELETE /api/playbook`, upload replaces, max 40,000 chars because it is sent with every section). Snapshotted at analysis start (`analysis_runs.playbookTitle`) and sent in an untrusted `<company_rules>` block. The cited rule (`playbookRuleQuote`) is verified against the rules text like any quote; not found → `playbookRuleVerified=false` + review reason. Risks store a copy of the rule, so replacing/removing rules does not change history. Documents checked earlier need "Check again" to use new rules.
 - Compliance score (`lib/compliance-score.ts`, one source for the constants): 100 minus 18/12/7/2 per Critical/High/Medium/Low risk, floor 0. Closed and `unverified` (quote not found) risks are not counted; `no_evidence` (missing clause) risks are. Null until analyzed. List uses a SQL subquery; document detail returns the breakdown and overrides the score from the same rows.
-- `regulations` (GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law; max 3 from the AI, union ≤5 after merge) are "related areas to check", never violations. `suggestedClause` is a draft (UI: "Draft — have a lawyer review"), dropped by the server when the final severity is Low.
+- `regulations` (GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law, Azerbaijan law; max 3 from the AI, union ≤5 after merge) are "related areas to check", never violations. `suggestedClause` is a draft (UI: "Draft — have a lawyer review"), dropped by the server when the final severity is Low.
 
 ## Product
 

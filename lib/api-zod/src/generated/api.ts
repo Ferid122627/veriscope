@@ -401,7 +401,7 @@ export const ListRisksResponseItem = zod.object({
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
   "regulations": zod.array(zod.object({
-  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law']),
+  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law', 'Azerbaijan law']),
   "reference": zod.string()
 }).describe('A standard or law area a specialist should check. Not a finding that it is violated.')).describe('Related standards to check (never a claim of violation)'),
   "playbookTitle": zod.string().nullable().describe('Company rules document the rule was quoted from'),
@@ -453,7 +453,7 @@ export const GetRiskResponse = zod.object({
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
   "regulations": zod.array(zod.object({
-  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law']),
+  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law', 'Azerbaijan law']),
   "reference": zod.string()
 }).describe('A standard or law area a specialist should check. Not a finding that it is violated.')).describe('Related standards to check (never a claim of violation)'),
   "playbookTitle": zod.string().nullable().describe('Company rules document the rule was quoted from'),

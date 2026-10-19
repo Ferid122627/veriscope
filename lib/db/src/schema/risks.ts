@@ -18,7 +18,7 @@ export const RISK_KINDS = ["missing_protection", "potential_risk", "actual_issue
 export type RiskKind = (typeof RISK_KINDS)[number];
 // Standards a finding can be related to. "Related" means where a specialist
 // should look, never a finding that the document breaks the standard.
-export const REGULATION_FRAMEWORKS = ["GDPR", "ISO 27001", "ISO 9001", "SOC 2", "HIPAA", "NIST", "Local law"] as const;
+export const REGULATION_FRAMEWORKS = ["GDPR", "ISO 27001", "ISO 9001", "SOC 2", "HIPAA", "NIST", "Local law", "Azerbaijan law"] as const;
 export type RegulationFramework = (typeof REGULATION_FRAMEWORKS)[number];
 export interface RegulationRef {
   framework: RegulationFramework;

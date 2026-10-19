@@ -17,4 +17,5 @@ export const RegulationFramework = {
   HIPAA: 'HIPAA',
   NIST: 'NIST',
   Local_law: 'Local law',
+  Azerbaijan_law: 'Azerbaijan law',
 } as const;
