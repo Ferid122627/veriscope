@@ -44,3 +44,31 @@ mtime_ms = 1792415145185
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:5cbc7469-922c-40f2-b424-da460a670c5a/29e70a3c-7c91-4da3-8071-cf99fea1d4e7/9d4ae140-2cb1-4e5c-8c21-e92dc66cd486"
 storage_version_token = "1792415160752049"
 content_type = "text/html"
+
+[[outputs]]
+id = "EkE3jG3W4Xfxxv28Vfj4_"
+uri = "file://samples/test-company-rules.pdf"
+type = "pdf"
+title = "1. Test: Company rules (PDF)"
+description = "Upload on the Company rules page."
+logical_id = "def26198-39af-4bb2-b3bc-58585ce6128e"
+content_hash = "sha256:860c934ac84dce658556dfe6de6f403ac413787f857f61b0eb40fcc6a673894f"
+size = 17533
+mtime_ms = 1792418407013
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:5cbc7469-922c-40f2-b424-da460a670c5a/def26198-39af-4bb2-b3bc-58585ce6128e/4eda0638-097b-4617-b21b-7cf036a93c13"
+storage_version_token = "1792418423050862"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "lr5qqmhLka1uSOmIIgzS9"
+uri = "file://samples/test-services-agreement.pdf"
+type = "pdf"
+title = "2. Test: Services agreement (PDF)"
+description = "Add as a document, then run the AI check."
+logical_id = "1f419ff6-cef9-4112-86d6-b86820a12f1b"
+content_hash = "sha256:4f902d1911ac92d91423c50ab5d9f6e9941d5d960fe5a53a695b964cb30424a9"
+size = 17314
+mtime_ms = 1792418407013
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:5cbc7469-922c-40f2-b424-da460a670c5a/1f419ff6-cef9-4112-86d6-b86820a12f1b/3b3032b5-0398-454b-bfb4-625410ec3faf"
+storage_version_token = "1792418424321288"
+content_type = "application/pdf"
