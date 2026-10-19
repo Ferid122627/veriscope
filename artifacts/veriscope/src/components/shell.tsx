@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, FileText, ShieldAlert, ShieldCheck } from "lucide-react";
+import { LayoutGrid, FileText, ShieldAlert } from "lucide-react";
 import { useGetSystemStatus, useHealthCheck } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 
@@ -10,11 +10,14 @@ const nav = [
   { href: "/risks", label: "Risks to fix", icon: ShieldAlert, testId: "link-nav-risk-register" },
 ];
 
+/** Veriscope logo: a lens with a check mark. The ring follows the text colour, the check uses the accent colour. */
 export function Mark({ className }: { className?: string }) {
   return (
-    <span className={cn("grid place-items-center rounded-md bg-sidebar-primary/15 text-sidebar-primary", className)} aria-hidden>
-      <ShieldCheck className="size-[60%]" strokeWidth={2.2} />
-    </span>
+    <svg viewBox="0 0 64 64" fill="none" className={cn("text-white", className)} aria-hidden>
+      <circle cx="28" cy="28" r="18" stroke="currentColor" strokeWidth="6" />
+      <path d="M19.5 28.5l6.5 6.5 11.5-13" className="stroke-sidebar-primary" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M42 42l14 14" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -48,7 +51,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 bg-sidebar text-sidebar-foreground shadow-sm">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 md:px-8">
           <Link href="/" data-testid="link-home" className="flex items-center gap-2.5 py-1">
-            <Mark className="size-8" />
+            <Mark className="size-9" />
             <span className="text-[15px] font-semibold tracking-[0.14em] text-white">VERISCOPE</span>
           </Link>
           <nav aria-label="Main" className="-mx-1 flex gap-1 overflow-x-auto px-1 max-md:order-last max-md:w-full">

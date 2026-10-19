@@ -81,9 +81,17 @@ export function buildDocumentReport(doc: ReportDocument, risks: ReportRisk[], ge
 
   // ---- Cover header
   pdf.rect(0, 0, pdf.page.width, 128).fill(C.navy);
-  pdf.fillColor("#ffffff").font("bold").fontSize(11).text("VERISCOPE", left, 40, { characterSpacing: 2.5 });
-  pdf.fillColor("#9fd9df").font("sans").fontSize(10).text("Document risk report", left, 58);
-  pdf.fillColor("#ffffff").font("bold").fontSize(20).text(doc.title, left, 78, { width, height: 30, ellipsis: true });
+  // Logo: lens with a check mark (64x64 design grid, drawn at 34pt).
+  pdf.save();
+  pdf.translate(left, 34).scale(34 / 64).lineCap("round").lineJoin("round");
+  pdf.circle(28, 28, 18).lineWidth(6).stroke("#ffffff");
+  pdf.path("M19.5 28.5l6.5 6.5 11.5-13").lineWidth(5.5).stroke("#3fd0c9");
+  pdf.moveTo(42, 42).lineTo(56, 56).lineWidth(7).stroke("#ffffff");
+  pdf.restore();
+  const textX = left + 46;
+  pdf.fillColor("#ffffff").font("bold").fontSize(11).text("VERISCOPE", textX, 40, { characterSpacing: 2.5 });
+  pdf.fillColor("#9fd9df").font("sans").fontSize(10).text("Document risk report", textX, 58);
+  pdf.fillColor("#ffffff").font("bold").fontSize(20).text(doc.title, left, 82, { width, height: 30, ellipsis: true });
   pdf.y = 150;
 
   const meta: [string, string][] = [
