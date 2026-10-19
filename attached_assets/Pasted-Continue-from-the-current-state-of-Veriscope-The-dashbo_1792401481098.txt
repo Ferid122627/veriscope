@@ -1,0 +1,39 @@
+Continue from the current state of Veriscope. The dashboard, API, and database are running, but AI analysis and reassessment are blocked because the AI provider is not configured.
+
+For this task, prioritize safety, verification, and token efficiency. Do not rebuild the project.
+
+### Step 1 — Preserve Git state
+- Inspect the current branch, `git status`, recent commits, and remote tracking status.
+- Identify the uncommitted `proxy-addr` override and lockfile changes.
+- Inspect the local Node 24 to Node 20 commit and explain whether it should be pushed.
+- Do not reset, discard, force-push, or rewrite Git history.
+- Do not commit or push anything without my approval.
+
+### Step 2 — Verify the dependency fix
+- Inspect the existing `pnpm-workspace.yaml` and lockfile.
+- Confirm that the `proxy-addr` override to `^2.0.8` is compatible with the dependency tree and resolves consistently.
+- Do not change unrelated dependencies.
+
+### Step 3 — Run safe checks
+- Inspect `package.json` and identify the actual commands for typecheck, tests, and build.
+- Run typecheck and build if available.
+- Report exact commands and results.
+- Inspect the tests before running them. Since the existing tests may write to or delete data in the development database, do not run them against that database until their effects are understood.
+- Use an isolated test database if supported and safe.
+
+### Step 4 — Inspect AI integration without connecting it
+- Identify the existing AI provider integration and required environment variables.
+- Explain how to configure it through Replit and whether usage will consume credits.
+- Do not connect the provider, expose credentials, or make billable AI requests.
+- Identify whether existing tests can validate error handling without real AI calls. Clearly distinguish mocks from real AI results.
+
+### Step 5 — Report and stop
+Provide:
+1. Git status and unpushed changes.
+2. Dependency-fix verification.
+3. Typecheck and build results.
+4. Test safety assessment.
+5. AI integration requirements and potential cost.
+6. Remaining blockers and the next recommended action.
+
+Do not modify application code, install additional skills, connect the AI provider, run destructive tests, commit, or push. Stop after the report and wait for my approval.
