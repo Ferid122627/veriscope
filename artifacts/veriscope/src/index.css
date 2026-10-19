@@ -81,51 +81,51 @@
 
   --background: 216 33% 97%;
 
-  --foreground: 220 47% 14%;
+  --foreground: 218 43% 16%;
 
-  --border: 216 24% 88%;
+  --border: 215 27% 91%;
 
   --card: 0 0% 100%;
 
-  --card-foreground: 220 47% 14%;
+  --card-foreground: 218 43% 16%;
 
-  --card-border: 216 24% 87%;
+  --card-border: 215 27% 91%;
 
-  --sidebar: 221 52% 13%;
+  --sidebar: 221 49% 13%;
 
-  --sidebar-foreground: 214 32% 86%;
+  --sidebar-foreground: 215 25% 80%;
 
-  --sidebar-border: 221 35% 22%;
+  --sidebar-border: 221 33% 21%;
 
-  --sidebar-primary: 172 58% 52%;
+  --sidebar-primary: 169 59% 60%;
 
-  --sidebar-primary-foreground: 221 52% 13%;
+  --sidebar-primary-foreground: 221 49% 13%;
 
-  --sidebar-accent: 221 38% 21%;
+  --sidebar-accent: 221 36% 20%;
 
   --sidebar-accent-foreground: 0 0% 100%;
 
-  --sidebar-ring: 172 58% 52%;
+  --sidebar-ring: 169 59% 60%;
 
   --popover: 0 0% 100%;
 
-  --popover-foreground: 220 47% 14%;
+  --popover-foreground: 218 43% 16%;
 
-  --popover-border: 216 24% 87%;
+  --popover-border: 215 27% 91%;
 
-  --primary: 221 52% 20%;
+  --primary: 186 89% 29%;
 
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 214 30% 94%;
+  --secondary: 216 30% 95%;
 
-  --secondary-foreground: 220 47% 14%;
+  --secondary-foreground: 218 43% 16%;
 
-  --muted: 214 30% 94.5%;
+  --muted: 216 30% 95%;
 
-  --muted-foreground: 218 16% 38%;
+  --muted-foreground: 218 12% 42%;
 
-  --accent: 174 64% 30%;
+  --accent: 186 89% 29%;
 
   --accent-foreground: 0 0% 100%;
 
@@ -133,10 +133,10 @@
 
   --destructive-foreground: 0 0% 100%;
 
-  --input: 216 20% 80%;
-  --ring: 174 64% 30%;
-  --chart-1: 221 52% 20%;
-  --chart-2: 174 64% 30%;
+  --input: 215 20% 82%;
+  --ring: 186 89% 29%;
+  --chart-1: 218 43% 16%;
+  --chart-2: 186 89% 29%;
   --chart-3: 28 85% 52%;
   --chart-4: 4 72% 48%;
   --chart-5: 190 40% 40%;
@@ -441,3 +441,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;o
 
 .font-quote{font-family:var(--app-font-quote)}
 h1,h2,h3{text-wrap:balance}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }

@@ -32,34 +32,34 @@ export default function Documents() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Source library" title="Documents" meta={docs.data ? `${docs.data.length} on file · newest first` : " "}>
-        <button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-document"><Plus className="size-4" /> Add document</button>
+      <PageHeader title="Documents" description="Contracts, policies and reports you have added. Open a document to read it or to find risks with AI."
+        meta={docs.data ? `${docs.data.length} ${docs.data.length === 1 ? "document" : "documents"} · newest first` : " "}>
+        <button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-document"><Plus className="size-4" aria-hidden /> Check a document</button>
       </PageHeader>
 
       {docs.isError ? <ErrorState error={docs.error} onRetry={() => docs.refetch()} /> : (
-        <div className="overflow-hidden rounded-md border border-card-border bg-card shadow-sm rise">
-          <div className="hidden grid-cols-[1fr_230px_90px_80px_120px_40px] gap-x-4 border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:grid">
-            <span>Title</span><span>Status</span><span className="text-right">Chars</span><span className="text-right">Risks</span><span>Added</span><span />
+        <div className="overflow-hidden rounded-lg border border-card-border bg-card shadow-sm">
+          <div className="hidden grid-cols-[1fr_220px_90px_120px_40px] gap-x-4 border-b border-border bg-muted/40 px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground md:grid">
+            <span>Document</span><span>Status</span><span className="text-right">Risks found</span><span>Added</span><span className="sr-only">Actions</span>
           </div>
           {docs.isLoading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="border-b border-border px-4 py-3.5 last:border-0"><Skel className="h-4 w-2/3" /></div>)
             : !docs.data?.length ? (
               <EmptyState testId="empty-documents" icon={<FileText className="size-5" />} title="No documents yet"
-                body="Veriscope works from source text. Add a contract, policy or audit report and it becomes the ground truth every risk must quote from."
-                action={<button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-first-document"><Plus className="size-4" /> Add your first document</button>} />
-            ) : docs.data.map((d, i) => (
-              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_230px_90px_80px_120px_40px] rise" style={{ animationDelay: `${i * 25}ms` }} data-testid={`row-document-${d.id}`}>
+                body="Add a contract, policy or report. Veriscope can then find risks in it, and every risk will quote the exact text it is based on."
+                action={<button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-first-document"><Plus className="size-4" aria-hidden /> Check your first document</button>} />
+            ) : docs.data.map((d) => (
+              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_220px_90px_120px_40px]" data-testid={`row-document-${d.id}`}>
                 <Link href={`/documents/${d.id}`} className="min-w-0" data-testid={`link-document-${d.id}`}>
-                  <div className="truncate font-medium text-[14px] group-hover:underline underline-offset-4 decoration-accent decoration-2">{d.title}</div>
-                  {d.filename && <div className="truncate font-mono text-[11px] text-muted-foreground">{d.filename}</div>}
+                  <div className="truncate text-[14.5px] font-semibold group-hover:underline underline-offset-4 decoration-primary decoration-2">{d.title}</div>
+                  <div className="truncate text-[12.5px] text-muted-foreground">{[d.filename, d.sourceType.toUpperCase(), `${num(d.charCount)} characters`].filter(Boolean).join(" · ")}</div>
                 </Link>
-                <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} /><Chip className="border-border text-muted-foreground">{d.sourceType}</Chip>{d.purpose === "evidence" && <Chip testId={`tag-evidence-${d.id}`} className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}</span>
-                <span className="hidden text-right font-mono text-xs tabular text-muted-foreground md:block">{num(d.charCount)}</span>
-                <span className="hidden text-right font-mono text-sm tabular md:block">{d.riskCount}</span>
-                <span className="hidden font-mono text-[11px] text-muted-foreground md:block">{ago(d.createdAt)}</span>
-                <button onClick={() => setPending({ id: d.id, title: d.title })} data-testid={`button-delete-document-${d.id}`} aria-label="Delete document" className="grid size-7 place-items-center justify-self-end rounded-sm text-muted-foreground opacity-60 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
+                <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} />{d.purpose === "evidence" && <Chip testId={`tag-evidence-${d.id}`} className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}</span>
+                <span className="hidden text-right text-[14px] font-medium tabular md:block">{d.riskCount}</span>
+                <span className="hidden text-[13px] text-muted-foreground md:block">{ago(d.createdAt)}</span>
+                <button onClick={() => setPending({ id: d.id, title: d.title })} data-testid={`button-delete-document-${d.id}`} aria-label={`Delete ${d.title}`} className="grid size-8 place-items-center justify-self-end rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring">
                   <Trash2 className="size-3.5" />
                 </button>
-                <div className="col-span-2 flex items-center gap-3 font-mono text-[11px] text-muted-foreground md:hidden"><DocStatus status={d.status} />{d.riskCount} risks · {ago(d.createdAt)}</div>
+                <div className="col-span-2 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground md:hidden"><DocStatus status={d.status} />{d.purpose === "evidence" && <Chip className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}<span>{d.riskCount} {d.riskCount === 1 ? "risk" : "risks"} · {ago(d.createdAt)}</span></div>
               </div>
             ))}
         </div>
@@ -69,8 +69,8 @@ export default function Documents() {
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-semibold tracking-tight">Delete this document?</AlertDialogTitle>
-            <AlertDialogDescription>"{pending?.title}" will be removed along with every risk, evidence quote, action and assessment derived from it. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle className="text-lg font-semibold tracking-tight">Delete this document?</AlertDialogTitle>
+            <AlertDialogDescription>"{pending?.title}" will be removed, together with every risk, quote, action and check that came from it. This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-delete">Keep it</AlertDialogCancel>

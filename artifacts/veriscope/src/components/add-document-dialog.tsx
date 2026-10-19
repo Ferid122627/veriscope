@@ -10,14 +10,14 @@ import { cn } from "@/lib/utils";
 
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
 const MAX = 10 * 1024 * 1024;
-const field = "mt-1.5 h-9 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15";
-const lbl = "text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
+const field = "mt-1.5 h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20";
+const lbl = "text-[12.5px] font-medium text-foreground/80";
 
 function checkFile(f: File): string | null {
   const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".")).toLowerCase() : "";
-  if (!ACCEPT.includes(ext)) return `Unsupported file type "${ext || "none"}". Accepted: PDF, DOCX, TXT, MD.`;
-  if (f.size > MAX) return `File is ${fmtBytes(f.size)}; the limit is 10 MB.`;
-  if (f.size === 0) return "File is empty.";
+  if (!ACCEPT.includes(ext)) return `This file type (${ext || "no extension"}) is not supported. Please use a PDF, Word (.docx), TXT or Markdown file.`;
+  if (f.size > MAX) return `This file is ${fmtBytes(f.size)}. The maximum size is 10 MB.`;
+  if (f.size === 0) return "This file is empty. Please choose another file.";
   return null;
 }
 
@@ -39,7 +39,7 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
   const reset = () => { setTitle(""); setContent(""); setFile(null); setErr(null); };
   const done = (doc: { id: number; title: string; charCount: number }) => {
     invalidate();
-    toast({ title: "Document added", description: `${doc.title} · ${num(doc.charCount)} characters` });
+    toast({ title: "Document added", description: `${doc.title} · ${num(doc.charCount)} characters read. Next: select "Find risks with AI".` });
     reset(); onOpenChange(false); navigate(`/documents/${doc.id}`);
   };
   const fail = (e: unknown) => setErr({ msg: apiErrorMessage(e), existing: existingDocId(e) });
@@ -56,10 +56,10 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
     if (pending) return;
     setErr(null);
     if (tab === "upload") {
-      if (!file) { setErr({ msg: "Choose a file to upload.", existing: null }); return; }
+      if (!file) { setErr({ msg: "Please choose a file first.", existing: null }); return; }
       upload.mutate({ data: { file, ...(title.trim() && { title: title.trim() }) } }, { onSuccess: done, onError: fail });
     } else {
-      if (!title.trim() || !content.trim()) { setErr({ msg: "Title and text are both required.", existing: null }); return; }
+      if (!title.trim() || !content.trim()) { setErr({ msg: "Please enter a name and paste the document text.", existing: null }); return; }
       create.mutate({ data: { title: title.trim(), content } }, { onSuccess: done, onError: fail });
     }
   };
@@ -68,14 +68,14 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
     <Dialog open={open} onOpenChange={(o) => { if (!pending) { onOpenChange(o); if (!o) setErr(null); } }}>
       <DialogContent className="max-w-2xl bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl font-semibold tracking-tight">Add a document</DialogTitle>
-          <DialogDescription>Its text becomes the ground truth. Evidence quotes are verified against it character for character.</DialogDescription>
+          <DialogTitle className="text-lg font-semibold tracking-tight">Check a document</DialogTitle>
+          <DialogDescription>Add a contract, policy or report. We will open it next so you can start the AI risk check. Every quote the AI uses is matched against this text.</DialogDescription>
         </DialogHeader>
-        <div className="inline-flex self-start overflow-hidden rounded-sm border border-border">
+        <div className="inline-flex self-start overflow-hidden rounded-md border border-input" role="tablist" aria-label="How to add the document">
           {(["upload", "paste"] as const).map((t) => (
-            <button key={t} type="button" data-testid={`tab-${t}`} disabled={pending} onClick={() => { setTab(t); setErr(null); }}
-              className={cn("px-3 py-1.5 text-xs transition-colors", t === "paste" && "border-l border-border", tab === t ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-              {t === "upload" ? "Upload file" : "Paste text"}
+            <button key={t} type="button" role="tab" aria-selected={tab === t} data-testid={`tab-${t}`} disabled={pending} onClick={() => { setTab(t); setErr(null); }}
+              className={cn("px-3.5 py-1.5 text-[13px] font-medium transition-colors", t === "paste" && "border-l border-input", tab === t ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted")}>
+              {t === "upload" ? "Upload a file" : "Paste text"}
             </button>
           ))}
         </div>
@@ -88,42 +88,44 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={() => setDrag(false)}
                 onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
-                className={cn("flex cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed px-6 py-9 text-center transition-colors",
-                  drag ? "border-accent bg-accent/10" : "border-foreground/25 bg-background hover:bg-muted/50")}>
+                role="button" tabIndex={0} aria-label="Choose a file to upload" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
+                className={cn("flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-9 text-center transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                  drag ? "border-primary bg-primary/5" : "border-input bg-background hover:bg-muted/50")}>
                 <input ref={inputRef} type="file" accept={ACCEPT.join(",")} className="hidden" data-testid="input-file" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
                 {file ? (
                   <div className="flex items-center gap-3 text-left">
                     <FileText className="size-6 text-muted-foreground" />
-                    <div className="min-w-0"><div className="truncate text-sm font-medium" data-testid="text-file-name">{file.name}</div><div className="font-mono text-[11px] text-muted-foreground">{fmtBytes(file.size)}</div></div>
+                    <div className="min-w-0"><div className="truncate text-sm font-medium" data-testid="text-file-name">{file.name}</div><div className="text-[12px] text-muted-foreground">{fmtBytes(file.size)} · ready to upload</div></div>
                     <button type="button" aria-label="Remove file" data-testid="button-remove-file" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="grid size-7 place-items-center rounded-sm hover:bg-muted"><X className="size-3.5" /></button>
                   </div>
                 ) : (
                   <>
-                    <UploadCloud className="mb-2 size-6 text-muted-foreground" />
-                    <div className="text-sm">Drop a file here, or <span className="underline decoration-accent decoration-2 underline-offset-4">browse</span></div>
-                    <div className="mt-1.5 text-[12px] text-muted-foreground">Supported: PDF, DOCX, TXT, MD · up to 10 MB · PDFs need selectable text</div>
+                    <span className="mb-2 grid size-10 place-items-center rounded-full bg-primary/10 text-primary"><UploadCloud className="size-5" aria-hidden /></span>
+                    <div className="text-sm">Drag a file here, or <span className="font-medium text-primary underline underline-offset-4">choose a file</span></div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">PDF, Word (.docx), TXT or Markdown · up to 10 MB</div>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">Scanned PDFs without selectable text cannot be read.</div>
                   </>
                 )}
               </div>
               <label className="block">
-                <span className={lbl}>Title <span className="normal-case tracking-normal">(optional, defaults to filename)</span></span>
+                <span className={lbl}>Name <span className="font-normal text-muted-foreground">(optional, uses the file name if empty)</span></span>
                 <input data-testid="input-upload-title" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} className={field} />
               </label>
             </>
           ) : (
             <>
               <label className="block">
-                <span className={lbl}>Title</span>
+                <span className={lbl}>Name</span>
                 <input data-testid="input-title" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Master Services Agreement — Halden Logistics" className={field} />
               </label>
               <label className="block">
-                <span className={cn(lbl, "flex justify-between")}><span>Document text</span><span className="tabular">{num(content.length)} chars</span></span>
-                <textarea data-testid="input-content" value={content} onChange={(e) => setContent(e.target.value)} rows={12} placeholder="Paste contract, policy or audit report text..." className="mt-1.5 w-full resize-y rounded-sm border border-input bg-background px-3 py-2 font-serif text-[15px] leading-relaxed outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" />
+                <span className={cn(lbl, "flex justify-between")}><span>Document text</span><span className="font-normal tabular text-muted-foreground">{num(content.length)} characters</span></span>
+                <textarea data-testid="input-content" value={content} onChange={(e) => setContent(e.target.value)} rows={12} placeholder="Paste contract, policy or audit report text..." className="mt-1.5 w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-[14px] leading-relaxed outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
               </label>
             </>
           )}
           {err && (
-            <div data-testid="text-form-error" className="rounded-sm border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <div data-testid="text-form-error" role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {err.msg}
               {err.existing != null && (
                 <Link href={`/documents/${err.existing}`} onClick={() => onOpenChange(false)} data-testid="link-existing-document" className="ml-2 font-medium text-foreground underline underline-offset-4">Open existing document</Link>
@@ -131,10 +133,10 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
             </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {pending && <span className="mr-auto inline-flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="text-upload-progress" aria-live="polite"><Loader2 className="size-3 animate-spin" />{tab === "upload" ? "Uploading and extracting text…" : "Saving document…"}</span>}
+            {pending && <span className="mr-auto inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground" data-testid="text-upload-progress" aria-live="polite"><Loader2 className="size-3 animate-spin" aria-hidden />{tab === "upload" ? "Uploading and reading the text…" : "Saving the document…"}</span>}
             <button type="button" className={btnGhost} disabled={pending} onClick={() => onOpenChange(false)} data-testid="button-cancel">Cancel</button>
             <button type="submit" className={btnPrimary} disabled={pending} data-testid="button-submit-document">
-              {pending && <Loader2 className="size-3.5 animate-spin" />} {pending ? (tab === "upload" ? "Uploading..." : "Adding...") : tab === "upload" ? "Upload document" : "Add document"}
+              {pending && <Loader2 className="size-3.5 animate-spin" />} {pending ? (tab === "upload" ? "Uploading…" : "Saving…") : tab === "upload" ? "Upload document" : "Add document"}
             </button>
           </div>
         </form>

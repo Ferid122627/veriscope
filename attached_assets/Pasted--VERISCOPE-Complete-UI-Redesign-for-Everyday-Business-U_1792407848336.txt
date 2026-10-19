@@ -1,0 +1,261 @@
+# VERISCOPE — Complete UI Redesign for Everyday Business Users
+
+You are a senior product designer and frontend engineer working on the EXISTING Veriscope application.
+
+Repository: https://github.com/Ferid122627/veriscope
+
+Your task is to redesign the current UI into a clean, friendly, accessible, professional business risk-management product that ANY business owner can understand, including people with little computer experience.
+
+This is an implementation task, not a design proposal. Inspect the repository, implement the redesign in the existing application, and verify that existing functionality still works.
+
+## 1. PRIMARY GOAL
+
+The current application contains useful functionality, but its interface can feel too dense, technical, and text-heavy.
+
+Redesign it so that:
+- A first-time user immediately understands what the product does.
+- Users can find the next action without needing technical knowledge.
+- Risk findings are explained in plain, everyday language.
+- Important actions are obvious and easy to perform.
+- Advanced information remains available without overwhelming beginners.
+- The application feels trustworthy, polished, simple, and consistent.
+
+Do NOT remove or replace existing functionality just to make the UI simpler.
+
+## 2. VISUAL REFERENCE — FOLLOW THIS DESIGN DIRECTION
+
+Use the first Veriscope dashboard concept as the visual direction:
+
+- Main canvas: white or very light cool gray.
+- Sidebar: deep navy.
+- Primary actions and selected accents: restrained teal.
+- Cards: white, subtle gray borders, very light shadows only when useful.
+- Typography: clean, modern, highly readable sans-serif.
+- Layout: organized, compact, and calm.
+- Corners: modestly rounded, not excessively pill-shaped.
+- Icons: simple, consistent, and meaningful.
+- Buttons: clear labels and obvious primary/secondary hierarchy.
+- Tables and lists: compact, aligned, easy to scan.
+
+Suggested palette:
+- Sidebar navy: #111C32
+- Dark text: #17243A
+- Teal primary: #087F8C
+- Teal accent: #5ED6C0
+- Main background: #F5F7FA
+- Card background: #FFFFFF
+- Borders: #E3E8EF
+- Secondary text: #697586
+
+Use these as design starting points and keep the palette consistent. Ensure accessible text contrast; do not use the pale teal accent for small text on white.
+
+Do not introduce gradients, flashy animations, neon colors, oversized illustrations, excessive shadows, glassmorphism, or unnecessary decoration.
+
+The result must look like a real, carefully designed SaaS product, not a generic AI-generated dashboard.
+
+## 3. IMPORTANT: DESIGN FOR NON-TECHNICAL USERS
+
+Use plain language throughout the user-facing interface.
+
+Prefer:
+- “Check a document” instead of “Initiate document analysis”.
+- “Risks to fix” instead of unnecessarily technical risk-management terminology in navigation.
+- “Why this matters” instead of “Risk rationale”.
+- “Text found in your document” instead of technical evidence terminology where appropriate.
+- “What to do next” instead of “Mitigation workflow”.
+- “Check again” instead of “Reassessment” for the primary action label, while retaining the actual reassessment functionality.
+- “Needs your review” instead of unexplained technical status labels.
+
+You may retain professional terminology where necessary, but explain it in simple language nearby.
+
+Do not make the product sound childish. The target is a business owner who values clarity and professionalism.
+
+Use short headings, concise explanations, meaningful empty states, and specific action labels. Avoid long paragraphs that users must read before they can continue.
+
+## 4. SIDEBAR AND NAVIGATION
+
+Create a consistent, clean left sidebar inspired by the reference design.
+
+- Brand: VERISCOPE with a simple shield-style icon.
+- Use a deep navy background and readable light text.
+- Clearly distinguish the active navigation item.
+- Use consistent icons and labels.
+- Preserve all existing routes and navigation functionality.
+- Keep navigation labels understandable to non-technical users.
+- Do not invent new pages or links that do not exist.
+- If the existing app has more navigation items than comfortably fit, organize them logically without deleting functionality.
+
+The sidebar should be compact and visually quiet so the main content receives the most attention.
+
+## 5. DASHBOARD / OVERVIEW
+
+Inspect the existing overview implementation, particularly:
+`artifacts/veriscope/src/pages/overview.tsx`
+
+Redesign the dashboard around the user's immediate needs.
+
+### Header
+- Show a clear heading such as “Overview” or “Your business risks”.
+- Add one short explanation of what the user can do here.
+- Place the primary “+ Check a document” or existing equivalent action prominently on the right.
+- Avoid multiple competing primary buttons.
+
+### Summary metrics
+Display four compact KPI cards in a consistent row on desktop:
+- Documents
+- Total risks
+- Open risks
+- Needs your review
+
+Use actual data from the existing application. Do not hardcode example values.
+
+Each card should have a small label, a clear number, and an optional subtle icon. Avoid lengthy descriptions inside cards.
+
+### Main content
+Prioritize:
+1. Items that need the user's attention.
+2. The most important open risks.
+3. Recent activity, if it is useful.
+
+Make priority risks easy to understand. Each item should show:
+- A plain-language title.
+- A clear priority/severity label.
+- Its current status.
+- A short explanation when available.
+- A clear way to view details.
+
+Move secondary analytics, technical status details, lengthy explanations, and onboarding instructions into compact or collapsible sections where appropriate.
+
+The current “How it works” explanation must not dominate the dashboard every time a user opens it. Make it optional or visually secondary.
+
+Do not remove access to existing information.
+
+## 6. DOCUMENT UPLOAD AND ANALYSIS
+
+Inspect the existing document upload and analysis flow.
+
+Make it as simple as possible:
+- Provide one clearly visible “Add document” or “Check a document” action.
+- Explain supported file types and applicable limits in plain language using the actual backend rules.
+- Use a clear upload area and an obvious file-selection action.
+- Explain what happens after upload in one or two short sentences.
+- Make analysis progress easy to understand.
+- Show clear success, failure, unsupported-file, and empty states.
+- Preserve existing validation, document extraction, API calls, and real AI analysis.
+
+Never simulate a successful upload or analysis. Show real backend results and actual errors using friendly, actionable language.
+
+Do not add new paid AI calls or run analyses automatically just to populate the UI.
+
+## 7. RISK REGISTER
+
+Inspect:
+`artifacts/veriscope/src/pages/risks.tsx`
+
+Redesign the risk register so that an ordinary business user can quickly identify what needs attention.
+
+- Use a compact, responsive filter toolbar.
+- Keep existing filters and their behavior.
+- Use clear labels and concise status badges.
+- Make each risk title the most prominent text in its row.
+- Use plain-language explanations when existing data provides them.
+- Keep the source document and evidence state accessible.
+- Make it easy to open a risk and understand the next step.
+- Reduce excessive padding, duplicated labels, and unnecessary columns.
+- Maintain adequate text size, contrast, and click targets.
+- On narrow screens, provide a genuinely usable responsive layout.
+
+Do not remove important information or filter capabilities merely to make the table shorter.
+
+## 8. RISK DETAIL
+
+Inspect:
+`artifacts/veriscope/src/pages/risk-detail.tsx`
+
+Organize the page in this order:
+
+1. **The problem** — risk title, priority, and current status.
+2. **Why it matters** — concise explanation in everyday language.
+3. **Evidence** — the exact source text and document reference.
+4. **What to do next** — existing mitigation information and actions.
+5. **Check again** — the existing reassessment workflow.
+6. **Decision and history** — previous assessments, review information, and closure workflow.
+
+Make the most important information visible first.
+
+Long AI explanations, historical records, and technical details may be placed in accessible expandable sections. Keep critical warnings visible whenever they affect the trustworthiness of evidence or the user's decision.
+
+Evidence must remain verifiable against the original source. Do not paraphrase a source quotation while presenting it as an exact quotation.
+
+Preserve all existing reassessment functionality, evidence verification, risk status handling, and human approval requirements.
+
+A risk must never appear automatically resolved or closed just because an AI model recommends it.
+
+## 9. REPORTS, ASSESSMENTS, AND SECONDARY AREAS
+
+Inspect the rest of the frontend and apply the same design system consistently to all existing pages, dialogs, forms, tables, and notifications.
+
+- Use the same colors, typography, spacing, borders, and button hierarchy.
+- Explain technical states in understandable language.
+- Provide clear loading, empty, success, and error states.
+- Keep advanced details available when relevant.
+- Avoid redesigning only the dashboard while leaving other pages inconsistent.
+
+Do not create fake features or non-functional controls.
+
+## 10. ACCESSIBILITY AND RESPONSIVE DESIGN
+
+- Ensure readable font sizes and sufficient contrast.
+- Preserve visible keyboard focus.
+- Use semantic headings, labels, and form controls.
+- Do not communicate severity using color alone.
+- Ensure buttons and interactive elements have understandable labels.
+- Support common desktop and tablet widths, plus narrow mobile widths.
+- Avoid clipped content, overlapping controls, and unnecessarily forced horizontal scrolling.
+- Respect reduced-motion preferences if animations exist.
+
+## 11. STRICT FUNCTIONAL AND TECHNICAL CONSTRAINTS
+
+This is an existing application. Preserve it.
+
+DO NOT:
+- Rebuild the application from scratch.
+- Change the backend API contracts.
+- Change the database schema or existing database records.
+- Change AI prompts or risk-analysis logic.
+- Weaken evidence verification or review safeguards.
+- Remove human approval requirements for risk closure.
+- Replace real data with mock data.
+- Add fake buttons, placeholder workflows, or fake success messages.
+- Introduce new dependencies without a compelling necessity.
+- Make paid AI calls during UI development or testing.
+- Delete user data.
+- Revert unrelated work.
+- Run git reset, git rebase, force push, or destructive cleanup.
+- Commit or push changes unless explicitly asked.
+
+Preserve existing project-specific configuration and compatibility overrides, including the `proxy-addr` override `^2.0.8` in `pnpm-workspace.yaml` and the current Node.js runtime configuration in `.replit`.
+
+Inspect the current working tree before editing and preserve unrelated changes.
+
+## 12. VERIFICATION
+
+After implementation:
+1. Run the existing typecheck.
+2. Run the existing test suite.
+3. Fix regressions caused by the redesign.
+4. Inspect the changed pages at desktop and narrow widths if browser preview is available.
+5. Verify that navigation, upload, risk filters, evidence views, reassessment, and human-approved closure remain functional.
+6. Confirm that no database records or unrelated files were modified unnecessarily.
+7. Do not claim visual inspection if you could not actually preview the application.
+
+## 13. FINAL RESPONSE
+
+Report:
+- Which pages and components changed.
+- The main usability improvements.
+- Tests and typechecks run, with actual results.
+- Any visual issues you could not verify.
+- Any existing usability problems that require a separate task.
+
+Implement the redesign now. Prioritize clarity, plain language, and ease of use over visual complexity.
