@@ -30,3 +30,17 @@ storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/conversation:b8ee36a3-
 storage_version_token = "1792392381126943"
 content_type = "application/octet-stream"
 source_uri = "file://downloads/ECC-skills-10.zip"
+
+[[outputs]]
+id = "OsWGNyzOUKsD_AUJA4BC6"
+uri = "file://logo-concepts/veriscope-logo-concepts.html"
+type = "html"
+title = "Veriscope logo konseptləri"
+description = "6 logo variantı: açıq və tünd fonda, həmçinin kiçik ölçüdə."
+logical_id = "29e70a3c-7c91-4da3-8071-cf99fea1d4e7"
+content_hash = "sha256:89e193f8b7f65ebff08129023ed4abe32daad66dbbd3e315c55e2f5b926d6a89"
+size = 15730
+mtime_ms = 1792415145185
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:5cbc7469-922c-40f2-b424-da460a670c5a/29e70a3c-7c91-4da3-8071-cf99fea1d4e7/9d4ae140-2cb1-4e5c-8c21-e92dc66cd486"
+storage_version_token = "1792415160752049"
+content_type = "text/html"
