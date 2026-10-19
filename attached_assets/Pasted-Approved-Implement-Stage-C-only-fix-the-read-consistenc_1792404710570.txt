@@ -1,0 +1,18 @@
+Approved. Implement Stage C only: fix the read-consistency issue in `artifacts/api-server/routes/risks.ts`.
+
+### Confirmed problem
+`GET /risks/:id` reads six related sections using parallel queries on separate database connections. If a reassessment commits while these queries are running, the response can mix old and new rows—for example, showing a completed reassessment request without its assessment or evidence.
+
+### Requirements
+1. Inspect the existing database library/ORM, transaction API, database engine, and isolation-level support before choosing the implementation.
+2. Prefer a single transaction with an appropriate consistent snapshot for all six reads, if the existing stack supports it safely.
+3. Do not assume that `REPEATABLE READ` is supported or behaves identically across database engines. If the configured database cannot provide the required guarantee through the existing stack, stop and report the safest alternative before editing.
+4. Keep the response schema, endpoint behavior, authorization behavior, and unrelated route logic unchanged.
+5. Add a deterministic regression test that verifies a response cannot show a completed reassessment request while omitting its committed assessment/evidence. Avoid relying solely on probabilistic stress loops or arbitrary sleeps.
+6. Run the new test, the relevant API tests, the full test suite against `veriscope_test`, and typecheck. Do not weaken or skip existing assertions.
+7. Preserve the Stage 1–3 changes, the test synchronization fixes, the OpenAI integration, and the `proxy-addr` 2.0.8 security override.
+8. Do not make any real AI calls, delete or manually edit demo records, change dependencies, or modify UI code.
+9. Do not commit, push, reset, rebase, or rewrite Git history.
+10. Report the exact files changed, the consistency guarantee the chosen implementation provides, test results, and any remaining limitations.
+
+Stop after verification and wait for approval before proceeding to the previously prepared Prompt 5 (Security + End-to-End Verification). Do not start UI polish yet.

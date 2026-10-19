@@ -10,12 +10,7 @@ import {
   reassessmentRequestsTable,
   riskStatusChangesTable,
 } from "@workspace/db";
-import {
-  GetRiskParams,
-  GetRiskResponse,
-  ListRisksQueryParams,
-  ListRisksResponse,
-} from "@workspace/api-zod";
+import { GetRiskParams, GetRiskResponse, ListRisksQueryParams, ListRisksResponse } from "@workspace/api-zod";
 import { documentSummaryColumns, toDocumentSummary } from "../lib/document-summary";
 
 const router: IRouter = Router();
@@ -101,69 +96,66 @@ router.get("/risks", async (req, res) => {
   res.json(ListRisksResponse.parse(rows));
 });
 
-router.get("/risks/:id", async (req, res) => {
-  const params = GetRiskParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: "Invalid risk id" });
-    return;
-  }
-  const id = params.data.id;
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-  const [risk] = await db
+/**
+ * Everything the risk detail endpoint returns, read from one consistent snapshot.
+ * Returns null when the risk does not exist.
+ */
+async function loadRiskDetail(tx: Tx, id: number) {
+  const [risk] = await tx
     .select(riskColumns)
     .from(risksTable)
     .innerJoin(documentsTable, eq(documentsTable.id, risksTable.documentId))
     .where(eq(risksTable.id, id));
-  if (!risk) {
-    res.status(404).json({ error: "Risk not found" });
-    return;
-  }
+  if (!risk) return null;
 
-  const [allEvidence, actionRows, assessmentRows, [sourceDocument], requestRows, statusChanges] = await Promise.all([
-    db
-      .select({
-        id: evidenceTable.id,
-        riskId: evidenceTable.riskId,
-        documentId: evidenceTable.documentId,
-        documentTitle: documentsTable.title,
-        assessmentId: evidenceTable.assessmentId,
-        quote: evidenceTable.quote,
-        claimedQuote: evidenceTable.claimedQuote,
-        matchType: evidenceTable.matchType,
-        normalizations: evidenceTable.normalizations,
-        matchCount: evidenceTable.matchCount,
-        startOffset: evidenceTable.startOffset,
-        endOffset: evidenceTable.endOffset,
-        verified: evidenceTable.verified,
-        pageNumber: evidenceTable.pageNumber,
-        createdAt: evidenceTable.createdAt,
-      })
-      .from(evidenceTable)
-      .innerJoin(documentsTable, eq(documentsTable.id, evidenceTable.documentId))
-      .where(eq(evidenceTable.riskId, id))
-      .orderBy(asc(evidenceTable.createdAt), asc(evidenceTable.id)),
-    db
-      .select()
-      .from(mitigationActionsTable)
-      .where(eq(mitigationActionsTable.riskId, id))
-      .orderBy(asc(mitigationActionsTable.createdAt), asc(mitigationActionsTable.id)),
-    db
-      .select()
-      .from(assessmentsTable)
-      .where(eq(assessmentsTable.riskId, id))
-      .orderBy(desc(assessmentsTable.createdAt), desc(assessmentsTable.id)),
-    db.select(documentSummaryColumns).from(documentsTable).where(eq(documentsTable.id, risk.documentId)),
-    db
-      .select()
-      .from(reassessmentRequestsTable)
-      .where(eq(reassessmentRequestsTable.riskId, id))
-      .orderBy(desc(reassessmentRequestsTable.createdAt), desc(reassessmentRequestsTable.id)),
-    db
-      .select()
-      .from(riskStatusChangesTable)
-      .where(eq(riskStatusChangesTable.riskId, id))
-      .orderBy(desc(riskStatusChangesTable.createdAt), desc(riskStatusChangesTable.id)),
-  ]);
+  const allEvidence = await tx
+    .select({
+      id: evidenceTable.id,
+      riskId: evidenceTable.riskId,
+      documentId: evidenceTable.documentId,
+      documentTitle: documentsTable.title,
+      assessmentId: evidenceTable.assessmentId,
+      quote: evidenceTable.quote,
+      claimedQuote: evidenceTable.claimedQuote,
+      matchType: evidenceTable.matchType,
+      normalizations: evidenceTable.normalizations,
+      matchCount: evidenceTable.matchCount,
+      startOffset: evidenceTable.startOffset,
+      endOffset: evidenceTable.endOffset,
+      verified: evidenceTable.verified,
+      pageNumber: evidenceTable.pageNumber,
+      createdAt: evidenceTable.createdAt,
+    })
+    .from(evidenceTable)
+    .innerJoin(documentsTable, eq(documentsTable.id, evidenceTable.documentId))
+    .where(eq(evidenceTable.riskId, id))
+    .orderBy(asc(evidenceTable.createdAt), asc(evidenceTable.id));
+  const actionRows = await tx
+    .select()
+    .from(mitigationActionsTable)
+    .where(eq(mitigationActionsTable.riskId, id))
+    .orderBy(asc(mitigationActionsTable.createdAt), asc(mitigationActionsTable.id));
+  const assessmentRows = await tx
+    .select()
+    .from(assessmentsTable)
+    .where(eq(assessmentsTable.riskId, id))
+    .orderBy(desc(assessmentsTable.createdAt), desc(assessmentsTable.id));
+  const [sourceDocument] = await tx
+    .select(documentSummaryColumns)
+    .from(documentsTable)
+    .where(eq(documentsTable.id, risk.documentId));
+  const requestRows = await tx
+    .select()
+    .from(reassessmentRequestsTable)
+    .where(eq(reassessmentRequestsTable.riskId, id))
+    .orderBy(desc(reassessmentRequestsTable.createdAt), desc(reassessmentRequestsTable.id));
+  const statusChanges = await tx
+    .select()
+    .from(riskStatusChangesTable)
+    .where(eq(riskStatusChangesTable.riskId, id))
+    .orderBy(desc(riskStatusChangesTable.createdAt), desc(riskStatusChangesTable.id));
 
   // Titles of every document referenced by actions, assessments and reassessment requests.
   const docIds = [
@@ -178,7 +170,7 @@ router.get("/risks/:id", async (req, res) => {
   const titles = new Map(
     docIds.length
       ? (
-          await db
+          await tx
             .select({ id: documentsTable.id, title: documentsTable.title })
             .from(documentsTable)
             .where(inArray(documentsTable.id, docIds))
@@ -200,17 +192,36 @@ router.get("/risks/:id", async (req, res) => {
     evidence: allEvidence.filter((e) => e.assessmentId === a.id),
   }));
 
-  res.json(
-    GetRiskResponse.parse({
-      ...risk,
-      sourceDocument: toDocumentSummary(sourceDocument!),
-      evidence,
-      actions,
-      assessments,
-      reassessmentRequests,
-      statusChanges,
-    }),
-  );
+  return {
+    ...risk,
+    sourceDocument: toDocumentSummary(sourceDocument!),
+    evidence,
+    actions,
+    assessments,
+    reassessmentRequests,
+    statusChanges,
+  };
+}
+
+router.get("/risks/:id", async (req, res) => {
+  const params = GetRiskParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid risk id" });
+    return;
+  }
+
+  // One REPEATABLE READ, read-only transaction: every section below sees the same
+  // committed snapshot, so a reassessment that commits mid-request is either fully
+  // visible (request, assessment, evidence) or not visible at all.
+  const detail = await db.transaction((tx) => loadRiskDetail(tx, params.data.id), {
+    isolationLevel: "repeatable read",
+    accessMode: "read only",
+  });
+  if (!detail) {
+    res.status(404).json({ error: "Risk not found" });
+    return;
+  }
+  res.json(GetRiskResponse.parse(detail));
 });
 
 export default router;
