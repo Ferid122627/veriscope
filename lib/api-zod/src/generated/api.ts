@@ -9,6 +9,55 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary The current company rules document, if any
+ */
+export const GetPlaybookResponse = zod.object({
+  "playbook": zod.union([zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "filename": zod.string().nullable(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable(),
+  "pageCount": zod.number().int().nullable(),
+  "charCount": zod.number().int(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Upload the company rules document (replaces the current one)
+ */
+export const uploadPlaybookBodyTitleMax = 200;
+
+
+
+export const UploadPlaybookBody = zod.object({
+  "file": zod.instanceof(Blob),
+  "title": zod.string().max(uploadPlaybookBodyTitleMax).optional()
+})
+
+export const UploadPlaybookResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "filename": zod.string().nullable(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable(),
+  "pageCount": zod.number().int().nullable(),
+  "charCount": zod.number().int(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove the company rules document
+ */
+export const DeletePlaybookResponse = zod.void()
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
@@ -31,6 +80,11 @@ export const GetSystemStatusResponse = zod.object({
 /**
  * @summary List documents, newest first
  */
+export const listDocumentsResponseComplianceScoreMin = 0;
+export const listDocumentsResponseComplianceScoreMax = 100;
+
+
+
 export const ListDocumentsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -48,6 +102,7 @@ export const ListDocumentsResponseItem = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(listDocumentsResponseComplianceScoreMin).max(listDocumentsResponseComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 })
 export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
@@ -67,6 +122,11 @@ export const CreateDocumentBody = zod.object({
   "filename": zod.string().optional()
 })
 
+export const createDocumentResponseOneComplianceScoreMin = 0;
+export const createDocumentResponseOneComplianceScoreMax = 100;
+
+
+
 export const CreateDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -84,8 +144,21 @@ export const CreateDocumentResponse = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(createDocumentResponseOneComplianceScoreMin).max(createDocumentResponseOneComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "compliance": zod.union([zod.object({
+  "score": zod.number().int(),
+  "countedRisks": zod.number().int(),
+  "excludedUnverified": zod.number().int(),
+  "excludedClosed": zod.number().int(),
+  "deductions": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "count": zod.number().int(),
+  "pointsEach": zod.number().int(),
+  "points": zod.number().int()
+}))
+}).describe('How the compliance score was computed. Closed risks and risks whose quotes were not found in the document are not counted.'),zod.null()]),
   "analysisRuns": zod.array(zod.object({
   "id": zod.number().int(),
   "documentId": zod.number().int(),
@@ -96,6 +169,7 @@ export const CreateDocumentResponse = zod.object({
   "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
   "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
   "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "playbookTitle": zod.string().nullable().describe('Company rules document this run compared against (null = none)'),
   "error": zod.string().nullable(),
   "startedAt": zod.coerce.date(),
   "finishedAt": zod.coerce.date().nullable()
@@ -117,6 +191,11 @@ export const UploadDocumentBody = zod.object({
   "title": zod.string().max(uploadDocumentBodyTitleMax).optional()
 })
 
+export const uploadDocumentResponseOneComplianceScoreMin = 0;
+export const uploadDocumentResponseOneComplianceScoreMax = 100;
+
+
+
 export const UploadDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -134,8 +213,21 @@ export const UploadDocumentResponse = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(uploadDocumentResponseOneComplianceScoreMin).max(uploadDocumentResponseOneComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "compliance": zod.union([zod.object({
+  "score": zod.number().int(),
+  "countedRisks": zod.number().int(),
+  "excludedUnverified": zod.number().int(),
+  "excludedClosed": zod.number().int(),
+  "deductions": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "count": zod.number().int(),
+  "pointsEach": zod.number().int(),
+  "points": zod.number().int()
+}))
+}).describe('How the compliance score was computed. Closed risks and risks whose quotes were not found in the document are not counted.'),zod.null()]),
   "analysisRuns": zod.array(zod.object({
   "id": zod.number().int(),
   "documentId": zod.number().int(),
@@ -146,6 +238,7 @@ export const UploadDocumentResponse = zod.object({
   "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
   "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
   "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "playbookTitle": zod.string().nullable().describe('Company rules document this run compared against (null = none)'),
   "error": zod.string().nullable(),
   "startedAt": zod.coerce.date(),
   "finishedAt": zod.coerce.date().nullable()
@@ -166,6 +259,11 @@ export const AnalyzeDocumentBody = zod.object({
   "rerun": zod.boolean().optional().describe('Re-run analysis on an already analyzed document. Findings are matched to existing risks (which keep their IDs and gain a new assessment); nothing is deleted.')
 })
 
+export const analyzeDocumentResponseComplianceScoreMin = 0;
+export const analyzeDocumentResponseComplianceScoreMax = 100;
+
+
+
 export const AnalyzeDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -183,6 +281,7 @@ export const AnalyzeDocumentResponse = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(analyzeDocumentResponseComplianceScoreMin).max(analyzeDocumentResponseComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 })
 
@@ -204,6 +303,11 @@ export const GetDocumentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const getDocumentResponseOneComplianceScoreMin = 0;
+export const getDocumentResponseOneComplianceScoreMax = 100;
+
+
+
 export const GetDocumentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -221,8 +325,21 @@ export const GetDocumentResponse = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(getDocumentResponseOneComplianceScoreMin).max(getDocumentResponseOneComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "compliance": zod.union([zod.object({
+  "score": zod.number().int(),
+  "countedRisks": zod.number().int(),
+  "excludedUnverified": zod.number().int(),
+  "excludedClosed": zod.number().int(),
+  "deductions": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "count": zod.number().int(),
+  "pointsEach": zod.number().int(),
+  "points": zod.number().int()
+}))
+}).describe('How the compliance score was computed. Closed risks and risks whose quotes were not found in the document are not counted.'),zod.null()]),
   "analysisRuns": zod.array(zod.object({
   "id": zod.number().int(),
   "documentId": zod.number().int(),
@@ -233,6 +350,7 @@ export const GetDocumentResponse = zod.object({
   "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
   "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
   "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "playbookTitle": zod.string().nullable().describe('Company rules document this run compared against (null = none)'),
   "error": zod.string().nullable(),
   "startedAt": zod.coerce.date(),
   "finishedAt": zod.coerce.date().nullable()
@@ -282,6 +400,16 @@ export const ListRisksResponseItem = zod.object({
   "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
+  "regulations": zod.array(zod.object({
+  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law']),
+  "reference": zod.string()
+}).describe('A standard or law area a specialist should check. Not a finding that it is violated.')).describe('Related standards to check (never a claim of violation)'),
+  "playbookTitle": zod.string().nullable().describe('Company rules document the rule was quoted from'),
+  "playbookRuleQuote": zod.string().nullable().describe('The company rule this finding conflicts with or that requires a missing clause'),
+  "playbookRuleVerified": zod.boolean().nullable().describe('Whether the rule quote was found word for word in the company rules'),
+  "playbookGap": zod.string().nullable().describe('How the document differs from the company rule'),
+  "suggestedClause": zod.string().nullable().describe('AI-drafted replacement or new clause. A draft for a lawyer to review.'),
+  "suggestedClauseTarget": zod.string().nullable().describe('Which clause the draft replaces, or where a new clause should go'),
   "status": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
   "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
   "verifiedEvidenceCount": zod.number().int(),
@@ -299,6 +427,11 @@ export const ListRisksResponse = zod.array(ListRisksResponseItem)
 export const GetRiskParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+export const getRiskResponseTwoSourceDocumentComplianceScoreMin = 0;
+export const getRiskResponseTwoSourceDocumentComplianceScoreMax = 100;
+
+
 
 export const GetRiskResponse = zod.object({
   "id": zod.number().int(),
@@ -319,6 +452,16 @@ export const GetRiskResponse = zod.object({
   "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
   "reviewRequired": zod.boolean(),
   "reviewReasons": zod.array(zod.string()),
+  "regulations": zod.array(zod.object({
+  "framework": zod.enum(['GDPR', 'ISO 27001', 'ISO 9001', 'SOC 2', 'HIPAA', 'NIST', 'Local law']),
+  "reference": zod.string()
+}).describe('A standard or law area a specialist should check. Not a finding that it is violated.')).describe('Related standards to check (never a claim of violation)'),
+  "playbookTitle": zod.string().nullable().describe('Company rules document the rule was quoted from'),
+  "playbookRuleQuote": zod.string().nullable().describe('The company rule this finding conflicts with or that requires a missing clause'),
+  "playbookRuleVerified": zod.boolean().nullable().describe('Whether the rule quote was found word for word in the company rules'),
+  "playbookGap": zod.string().nullable().describe('How the document differs from the company rule'),
+  "suggestedClause": zod.string().nullable().describe('AI-drafted replacement or new clause. A draft for a lawyer to review.'),
+  "suggestedClauseTarget": zod.string().nullable().describe('Which clause the draft replaces, or where a new clause should go'),
   "status": zod.enum(['open', 'mitigating', 'closed']).describe('closed is only set through an explicit human approval'),
   "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
   "verifiedEvidenceCount": zod.number().int(),
@@ -367,6 +510,7 @@ export const GetRiskResponse = zod.object({
   "analysisStartedAt": zod.coerce.date().nullable(),
   "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
+  "complianceScore": zod.number().int().min(getRiskResponseTwoSourceDocumentComplianceScoreMin).max(getRiskResponseTwoSourceDocumentComplianceScoreMax).nullable().describe('Server-computed 0-100 score from open risks (null until the document is checked)'),
   "createdAt": zod.coerce.date()
 }),
   "evidence": zod.array(zod.object({

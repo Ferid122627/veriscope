@@ -43,7 +43,8 @@ export interface StructuredRequest {
 export async function requestStructuredCompletion(req: StructuredRequest): Promise<string> {
   const response = await getClient().chat.completions.create({
     model: ANALYSIS_MODEL,
-    max_completion_tokens: 8192,
+    // Room for drafted clauses on up to 25 findings per section.
+    max_completion_tokens: 16384,
     messages: [
       { role: "system", content: req.system },
       { role: "user", content: req.user },

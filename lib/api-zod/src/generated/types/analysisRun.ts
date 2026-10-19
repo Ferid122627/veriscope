@@ -30,6 +30,11 @@ export interface AnalysisRun {
      * @nullable
      */
   risksNotDetected: number | null;
+  /**
+     * Company rules document this run compared against (null = none)
+     * @nullable
+     */
+  playbookTitle: string | null;
   /** @nullable */
   error: string | null;
   startedAt: Date;

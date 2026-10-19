@@ -16,7 +16,75 @@ tags:
     description: Identified risks with evidence, actions and assessment history
   - name: dashboard
     description: Aggregates for the overview
+  - name: playbook
+    description: The company's own rules, compared against every document checked
 paths:
+  /playbook:
+    get:
+      operationId: getPlaybook
+      tags: [playbook]
+      summary: The current company rules document, if any
+      responses:
+        "200":
+          description: Current rules (null when none uploaded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybookState"
+    post:
+      operationId: uploadPlaybook
+      tags: [playbook]
+      summary: Upload the company rules document (replaces the current one)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PlaybookUpload"
+      responses:
+        "201":
+          description: Rules saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playbook"
+        "400":
+          description: No file or invalid title
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: File or extracted text too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Text could not be extracted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePlaybook
+      tags: [playbook]
+      summary: Remove the company rules document
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: No rules uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /healthz:
     get:
       operationId: healthCheck
@@ -628,7 +696,7 @@ components:
       enum: [running, completed, failed]
     AnalysisRun:
       type: object
-      required: [id, documentId, status, model, chunksTotal, risksIdentified, risksNew, risksMatched, risksNotDetected, error, startedAt, finishedAt]
+      required: [id, documentId, status, model, chunksTotal, risksIdentified, risksNew, risksMatched, risksNotDetected, playbookTitle, error, startedAt, finishedAt]
       properties:
         id:
           type: integer
@@ -651,6 +719,9 @@ components:
         risksNotDetected:
           type: ["integer", "null"]
           description: Existing risks this run did not find again (kept, flagged for review)
+        playbookTitle:
+          type: ["string", "null"]
+          description: Company rules document this run compared against (null = none)
         error:
           type: ["string", "null"]
         startedAt:
@@ -668,7 +739,7 @@ components:
     Document:
       type: object
       required:
-        [id, title, filename, charCount, sourceType, purpose, fileSize, pageCount, status, analysisError, analysisModel, chunksTotal, chunksDone, analysisStartedAt, analyzedAt, riskCount, createdAt]
+        [id, title, filename, charCount, sourceType, purpose, fileSize, pageCount, status, analysisError, analysisModel, chunksTotal, chunksDone, analysisStartedAt, analyzedAt, riskCount, complianceScore, createdAt]
       properties:
         id:
           type: integer
@@ -710,6 +781,11 @@ components:
           format: date-time
         riskCount:
           type: integer
+        complianceScore:
+          type: ["integer", "null"]
+          minimum: 0
+          maximum: 100
+          description: Server-computed 0-100 score from open risks (null until the document is checked)
         createdAt:
           type: string
           format: date-time
@@ -717,8 +793,12 @@ components:
       allOf:
         - $ref: "#/components/schemas/Document"
         - type: object
-          required: [content, pageOffsets, analysisRuns]
+          required: [content, pageOffsets, analysisRuns, compliance]
           properties:
+            compliance:
+              oneOf:
+                - $ref: "#/components/schemas/ComplianceBreakdown"
+                - type: "null"
             analysisRuns:
               type: array
               description: Analysis runs, newest first
@@ -731,6 +811,88 @@ components:
               description: Character offset where each PDF page starts (index 0 = page 1)
               items:
                 type: integer
+    ComplianceDeduction:
+      type: object
+      required: [severity, count, pointsEach, points]
+      properties:
+        severity:
+          $ref: "#/components/schemas/RiskSeverity"
+        count:
+          type: integer
+        pointsEach:
+          type: integer
+        points:
+          type: integer
+    ComplianceBreakdown:
+      type: object
+      description: How the compliance score was computed. Closed risks and risks whose quotes were not found in the document are not counted.
+      required: [score, countedRisks, excludedUnverified, excludedClosed, deductions]
+      properties:
+        score:
+          type: integer
+        countedRisks:
+          type: integer
+        excludedUnverified:
+          type: integer
+        excludedClosed:
+          type: integer
+        deductions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceDeduction"
+    Playbook:
+      type: object
+      required: [id, title, filename, sourceType, fileSize, pageCount, charCount, content, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        filename:
+          type: ["string", "null"]
+        sourceType:
+          $ref: "#/components/schemas/DocumentSource"
+        fileSize:
+          type: ["integer", "null"]
+        pageCount:
+          type: ["integer", "null"]
+        charCount:
+          type: integer
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PlaybookState:
+      type: object
+      required: [playbook]
+      properties:
+        playbook:
+          oneOf:
+            - $ref: "#/components/schemas/Playbook"
+            - type: "null"
+    PlaybookUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        title:
+          type: string
+          maxLength: 200
+    RegulationFramework:
+      type: string
+      enum: [GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law]
+    RegulationRef:
+      type: object
+      description: A standard or law area a specialist should check. Not a finding that it is violated.
+      required: [framework, reference]
+      properties:
+        framework:
+          $ref: "#/components/schemas/RegulationFramework"
+        reference:
+          type: string
     DocumentInput:
       type: object
       required: [title, content]
@@ -772,7 +934,7 @@ components:
     Risk:
       type: object
       required:
-        [id, documentId, documentTitle, title, description, category, severity, likelihood, riskKind, severityReason, businessImpact, reviewNotes, recommendedMitigation, evidenceBasis, interpretationNote, evidenceStatus, reviewRequired, reviewReasons, status, evidenceCount, verifiedEvidenceCount, openActionCount, lastAssessedAt, createdAt, updatedAt]
+        [id, documentId, documentTitle, title, description, category, severity, likelihood, riskKind, severityReason, businessImpact, reviewNotes, recommendedMitigation, evidenceBasis, interpretationNote, evidenceStatus, reviewRequired, reviewReasons, regulations, playbookTitle, playbookRuleQuote, playbookRuleVerified, playbookGap, suggestedClause, suggestedClauseTarget, status, evidenceCount, verifiedEvidenceCount, openActionCount, lastAssessedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -823,6 +985,29 @@ components:
           type: array
           items:
             type: string
+        regulations:
+          type: array
+          description: Related standards to check (never a claim of violation)
+          items:
+            $ref: "#/components/schemas/RegulationRef"
+        playbookTitle:
+          type: ["string", "null"]
+          description: Company rules document the rule was quoted from
+        playbookRuleQuote:
+          type: ["string", "null"]
+          description: The company rule this finding conflicts with or that requires a missing clause
+        playbookRuleVerified:
+          type: ["boolean", "null"]
+          description: Whether the rule quote was found word for word in the company rules
+        playbookGap:
+          type: ["string", "null"]
+          description: How the document differs from the company rule
+        suggestedClause:
+          type: ["string", "null"]
+          description: AI-drafted replacement or new clause. A draft for a lawyer to review.
+        suggestedClauseTarget:
+          type: ["string", "null"]
+          description: Which clause the draft replaces, or where a new clause should go
         status:
           $ref: "#/components/schemas/RiskStatus"
         evidenceCount:

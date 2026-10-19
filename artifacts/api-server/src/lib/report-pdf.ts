@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import PDFDocument from "pdfkit";
 import type { loadRiskDetail } from "../routes/risks";
 import type { toDocumentSummary } from "./document-summary";
+import type { ComplianceBreakdown } from "./compliance-score";
 
 export type ReportRisk = NonNullable<Awaited<ReturnType<typeof loadRiskDetail>>>;
 export type ReportDocument = ReturnType<typeof toDocumentSummary>;
@@ -53,7 +54,12 @@ const fmtDay = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : null;
 
 /** Builds the PDF and resolves with its bytes. */
-export function buildDocumentReport(doc: ReportDocument, risks: ReportRisk[], generatedAt = new Date()): Promise<Buffer> {
+export function buildDocumentReport(
+  doc: ReportDocument,
+  risks: ReportRisk[],
+  compliance: ComplianceBreakdown | null = null,
+  generatedAt = new Date(),
+): Promise<Buffer> {
   const dir = fontsDir();
   const pdf = new PDFDocument({
     size: "A4",
@@ -114,9 +120,10 @@ export function buildDocumentReport(doc: ReportDocument, risks: ReportRisk[], ge
   const quotesTotal = risks.reduce((n, r) => n + r.evidence.length, 0);
   const quotesVerified = risks.reduce((n, r) => n + r.evidence.filter((e) => e.verified).length, 0);
   const tiles: [string, string][] = [
+    ["Score (0–100)", compliance ? String(compliance.score) : "—"],
     ["Risks found", String(risks.length)],
     ["Open", String(counts((r) => r.status !== "closed"))],
-    ["Need your review", String(counts((r) => r.reviewRequired))],
+    ["Need review", String(counts((r) => r.reviewRequired))],
     ["Quotes verified", `${quotesVerified} / ${quotesTotal}`],
   ];
   const gap = 10;
@@ -156,7 +163,10 @@ export function buildDocumentReport(doc: ReportDocument, risks: ReportRisk[], ge
   pdf.font("sans").fontSize(8.5).fillColor(C.muted).text(
     "How to read this report: text in italics between quotation marks is copied from the document. " +
       "\"Quote verified\" means it was found word-for-word in the document text; a quote that was not found must not be relied on. " +
-      "Everything else is the AI's explanation, not a quote. A risk can only be closed after a recorded human approval.",
+      "Everything else is the AI's explanation, not a quote. A risk can only be closed after a recorded human approval. " +
+      "The compliance score starts at 100 and loses 18 / 12 / 7 / 2 points for each open Critical / High / Medium / Low risk; " +
+      "closed risks and risks whose quotes were not found are not counted. Related standards are areas to check, not findings of a breach. " +
+      "Suggested clauses are drafts for a lawyer to review.",
     left, pdf.y, { width, lineGap: 1.5 },
   );
 
@@ -243,6 +253,40 @@ export function buildDocumentReport(doc: ReportDocument, risks: ReportRisk[], ge
     if (r.interpretationNote) section("Interpretation (not a quote)", r.interpretationNote);
 
     section("Recommended action", r.recommendedMitigation);
+
+    if (r.playbookRuleQuote) {
+      const ruleText = `“${r.playbookRuleQuote.trim()}”`;
+      pdf.font("quote").fontSize(10);
+      ensure(pdf.heightOfString(ruleText, { width: width - 40, lineGap: 2 }) + 60);
+      pdf.font("bold").fontSize(9).fillColor(C.muted).text("COMPANY RULE", left + 14, pdf.y, { characterSpacing: 0.6 });
+      pdf.moveDown(0.3);
+      const qy = pdf.y;
+      const color = r.playbookRuleVerified ? C.verified : C.bad;
+      pdf.font("quote").fontSize(10).fillColor(C.ink).text(ruleText, left + 28, qy, { width: width - 40, lineGap: 2 });
+      pdf.rect(left + 18, qy, 2, pdf.y - qy).fill(color);
+      pdf.font("sans").fontSize(8.5).fillColor(color).text(
+        r.playbookRuleVerified
+          ? `Found in ${r.playbookTitle ? `“${r.playbookTitle}”` : "the company rules"}`
+          : "Not found in the company rules — do not rely on this rule",
+        left + 28, pdf.y + 2, { width: width - 40 },
+      );
+      pdf.moveDown(0.6);
+      section("How the document differs", r.playbookGap);
+    }
+
+    if (r.regulations.length) {
+      section(
+        "Related standards to check (not a finding of a breach)",
+        r.regulations.map((x) => `•  ${x.framework} — ${x.reference}`).join("\n"),
+      );
+    }
+
+    if (r.suggestedClause) {
+      section(
+        `Suggested clause — draft, have a lawyer review${r.suggestedClauseTarget ? ` (${r.suggestedClauseTarget})` : ""}`,
+        r.suggestedClause,
+      );
+    }
 
     if (r.reviewRequired && r.reviewReasons.length) {
       section("Why it needs your review", r.reviewReasons.map((x) => `•  ${x}`).join("\n"));

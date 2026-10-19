@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "wouter";
-import { ShieldAlert, BadgeCheck, MessageSquareWarning, Briefcase, CircleAlert, ArrowUpRight, Quote, Flag, FileText, Wrench, ChevronRight } from "lucide-react";
-import type { Evidence, Assessment, AssessmentKind, EvidenceBasis } from "@workspace/api-client-react";
+import { ShieldAlert, BadgeCheck, MessageSquareWarning, Briefcase, CircleAlert, ArrowUpRight, Quote, Flag, FileText, Wrench, ChevronRight, BookCheck, Scale, PenLine, Copy, Check } from "lucide-react";
+import type { Evidence, Assessment, AssessmentKind, EvidenceBasis, RiskDetail as RiskDetailT } from "@workspace/api-client-react";
 import { PageHeader, Panel, Skel, EmptyState, ErrorState, SeverityChip, StatusChip, Chip, EvidenceStatusBadge, BackLink, Disclosure, stamp, riskCode, btnGhost, verdictStyle, verdictLabel } from "@/components/kit";
 import { cn } from "@/lib/utils";
 import { useRiskQuery, ActionsSection, ReassessPanel, StatusControl, StatusHistory, ClosureProgress } from "@/components/risk-workflow";
@@ -84,6 +84,66 @@ export function AssessmentItem({ a, riskId }: { a: Assessment; riskId: number })
         </div>
       )}
     </li>
+  );
+}
+
+function CompanyRulePanel({ r }: { r: RiskDetailT }) {
+  if (!r.playbookRuleQuote) return null;
+  const ok = r.playbookRuleVerified === true;
+  return (
+    <Panel title="Company rule" subtitle={r.playbookTitle ? <>From <Link href="/playbook" className="underline underline-offset-4">{r.playbookTitle}</Link></> : undefined}
+      aside={<BookCheck className="size-4 text-muted-foreground" aria-hidden />} testId="section-company-rule">
+      <div className="mb-2">
+        {ok
+          ? <Chip className="border-accent/35 bg-accent/10 text-accent" testId="status-company-rule"><BadgeCheck className="size-3" aria-hidden />Found in your company rules</Chip>
+          : <Chip className="border-dashed border-destructive/60 bg-destructive/5 text-destructive" testId="status-company-rule"><CircleAlert className="size-3" aria-hidden />Not found in your company rules</Chip>}
+      </div>
+      <blockquote data-testid="text-company-rule"
+        className={cn("border-l-2 pl-4 font-quote text-[15px] italic leading-relaxed", ok ? "border-accent text-foreground" : "border-dashed border-destructive/60 text-foreground/60 line-through decoration-destructive/50")}>"{r.playbookRuleQuote}"</blockquote>
+      {!ok && <div className="mt-1.5 pl-4 text-[12.5px] font-medium text-destructive">The AI quoted a rule that is not in your company rules. Do not rely on it.</div>}
+      {r.playbookGap && (
+        <div className="mt-3 rounded-md bg-muted/60 px-3 py-2.5">
+          <div className="text-[12.5px] font-semibold text-muted-foreground">How the document differs</div>
+          <p className="mt-0.5 text-[14px] leading-relaxed" data-testid="text-company-rule-gap">{r.playbookGap}</p>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function StandardsPanel({ r }: { r: RiskDetailT }) {
+  if (!r.regulations.length) return null;
+  return (
+    <Panel title="Related standards" aside={<Scale className="size-4 text-muted-foreground" aria-hidden />} testId="section-standards">
+      <ul className="flex flex-wrap gap-2">
+        {r.regulations.map((x, i) => (
+          <li key={i} data-testid={`item-standard-${i}`} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[13px]">
+            <span className="font-semibold">{x.framework}</span><span className="text-muted-foreground">{x.reference}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2.5 text-[12.5px] leading-relaxed text-muted-foreground">Areas a specialist may want to check. This is not a finding that the document breaks these standards.</p>
+    </Panel>
+  );
+}
+
+function SuggestedClausePanel({ r }: { r: RiskDetailT }) {
+  const [copied, setCopied] = useState(false);
+  if (!r.suggestedClause) return null;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(r.suggestedClause!); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { setCopied(false); }
+  };
+  return (
+    <Panel title="Suggested clause" testId="section-suggested-clause"
+      aside={<button type="button" onClick={copy} data-testid="button-copy-clause" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12.5px] font-medium transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+        {copied ? <Check className="size-3.5 text-accent" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}{copied ? "Copied" : "Copy"}
+      </button>}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Chip className="border-[hsl(28_85%_45%/0.6)] bg-[hsl(32_100%_97%)] text-[hsl(28_85%_28%)]" testId="tag-clause-draft"><PenLine className="size-3" aria-hidden />Draft — have a lawyer review</Chip>
+        {r.suggestedClauseTarget && <span className="text-[12.5px] text-muted-foreground" data-testid="text-clause-target">{r.suggestedClauseTarget}</span>}
+      </div>
+      <p className="whitespace-pre-wrap rounded-md border border-border bg-muted/30 px-4 py-3 font-quote text-[15px] leading-relaxed" data-testid="text-suggested-clause">{r.suggestedClause}</p>
+    </Panel>
   );
 }
 
@@ -176,6 +236,9 @@ export default function RiskDetail() {
                 : r.evidence.map((e) => <EvidenceItem key={e.id} e={e} />)}
             </Panel>
 
+            <CompanyRulePanel r={r} />
+            <StandardsPanel r={r} />
+
             {/* 4. What to do next */}
             <section className="space-y-3" data-testid="section-next">
               <h2 className="text-[17px] font-semibold">What to do next</h2>
@@ -184,6 +247,7 @@ export default function RiskDetail() {
                   ? <p className="text-[14px] leading-relaxed" data-testid="text-recommended-mitigation">{r.recommendedMitigation}</p>
                   : <p className="text-[13.5px] text-muted-foreground">No fix was suggested for this risk.</p>}
               </Panel>
+              <SuggestedClausePanel r={r} />
               <ActionsSection risk={r} />
             </section>
 

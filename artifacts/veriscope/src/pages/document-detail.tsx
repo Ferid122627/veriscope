@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PageHeader, Panel, Skel, EmptyState, ErrorState, StatusChip, SeverityChip, DocStatus, Chip, BackLink, num, stamp, ago, fmtBytes, btnGhost, btnPrimary, apiErrorMessage } from "@/components/kit";
 import { useInvalidateAll } from "@/hooks/use-invalidate";
 import { ReportDownloadButton } from "@/components/report-download-button";
+import { ComplianceScoreCard } from "@/components/compliance-score";
 
 function elapsed(from: string | null, now: number) {
   if (!from) return "";
@@ -62,6 +63,12 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
       <div>
         <div className="text-[14px]" data-testid="text-analysis-summary"><b>{riskCount} {riskCount === 1 ? "risk" : "risks"} found</b> <span className="text-muted-foreground">· checked {doc.analyzedAt ? ago(doc.analyzedAt) : ""}</span></div>
         {doc.analysisModel && <div className="mt-0.5 text-[12px] text-muted-foreground">AI model: {doc.analysisModel}</div>}
+        <div className="mt-0.5 text-[12px] text-muted-foreground" data-testid="text-compared-rules">
+          {doc.analysisRuns.find((r) => r.status === "completed")?.playbookTitle
+            ? <>Compared with company rules: <Link href="/playbook" className="font-medium text-foreground underline underline-offset-4">{doc.analysisRuns.find((r) => r.status === "completed")!.playbookTitle}</Link></>
+            : <>Not compared with company rules. <Link href="/playbook" className="underline underline-offset-4">Add company rules</Link></>}
+        </div>
+        {doc.compliance && <div className="mt-3"><ComplianceScoreCard c={doc.compliance} /></div>}
         {riskCount === 0 && <p className="mt-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-[13px]" data-testid="text-no-risks-found">Check complete. No clear risks were found in this document.</p>}
         <button className={`${btnGhost} mt-3 w-full`} disabled={busy} onClick={() => setConfirm(true)} data-testid="button-rerun-analysis"><RotateCw className="size-3.5" aria-hidden /> Check this document again</button>
       </div>
@@ -100,6 +107,7 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
                 <div className="text-[12px] text-muted-foreground">{stamp(r.startedAt)}{r.finishedAt && ` → ${stamp(r.finishedAt)}`} · {r.model}</div>
                 {r.status === "failed" ? <div className="mt-0.5 break-words text-destructive">{r.error ?? "Failed without a reported reason."}</div>
                   : r.status === "completed" && <div className="mt-0.5 tabular">{r.risksIdentified ?? 0} found · {r.risksNew ?? 0} new · {r.risksMatched ?? 0} already known · {r.risksNotDetected ?? 0} not found again</div>}
+                {r.playbookTitle && <div className="mt-0.5 text-muted-foreground">Company rules: {r.playbookTitle}</div>}
               </li>
             ))}
           </ol>

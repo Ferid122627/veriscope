@@ -9,10 +9,12 @@ import {
   assessmentsTable,
   analysisRunsTable,
   type DocumentRow,
+  type RegulationRef,
 } from "@workspace/db";
 import { chunkText, type TextChunk } from "./chunking";
 import { verifyQuote, pageForOffset, type QuoteVerification } from "./evidence-locator";
-import { analyzeChunk, type AiRisk, type ExistingRiskRef } from "./ai/risk-analysis";
+import { analyzeChunk, type AiRisk, type ExistingRiskRef, type PlaybookContext } from "./ai/risk-analysis";
+import { getCurrentPlaybook } from "./playbook";
 import { calibrateSeverity, describeSeverity } from "./risk-severity";
 import { countSeparatePassages, reviewEvidence, notDetectedReason, type EvidenceBasis, type QuoteSupport } from "./evidence-review";
 import {
@@ -73,13 +75,17 @@ export async function startAnalysis(documentId: number, rerun: boolean, log: Log
         };
   }
 
+  // Snapshot of the company rules at the start, so a replacement uploaded
+  // mid-run cannot mix two rule sets within one run.
+  const playbookRow = await getCurrentPlaybook();
+  const playbook: PlaybookContext | null = playbookRow ? { title: playbookRow.title, content: playbookRow.content } : null;
   const [run] = await db
     .insert(analysisRunsTable)
-    .values({ documentId, model: ANALYSIS_MODEL, chunksTotal: chunks.length })
+    .values({ documentId, model: ANALYSIS_MODEL, chunksTotal: chunks.length, playbookTitle: playbook?.title ?? null })
     .returning({ id: analysisRunsTable.id });
 
-  log.info({ documentId, runId: run!.id, chunks: chunks.length, rerun }, "Analysis started");
-  void runAnalysis(claimed, run!.id, chunks, log);
+  log.info({ documentId, runId: run!.id, chunks: chunks.length, rerun, playbook: playbook !== null }, "Analysis started");
+  void runAnalysis(claimed, run!.id, chunks, log, playbook);
   return { ok: true, document: claimed, runId: run!.id };
 }
 
@@ -185,8 +191,63 @@ export function mergeRisks(perChunk: AiRisk[][], existing: Pick<ExistingRiskRef,
     }
     prev.needsHumanReview ||= risk.needsHumanReview;
     prev.confidence = Math.max(prev.confidence, risk.confidence);
+    // Rule and gap belong together, as do a draft clause and its target.
+    if (!prev.playbookRuleQuote && risk.playbookRuleQuote) {
+      prev.playbookRuleQuote = risk.playbookRuleQuote;
+      prev.playbookGap = risk.playbookGap;
+    }
+    if (!prev.suggestedClause && risk.suggestedClause) {
+      prev.suggestedClause = risk.suggestedClause;
+      prev.suggestedClauseTarget = risk.suggestedClauseTarget;
+    }
+    prev.regulations = mergeRegulations(prev.regulations, risk.regulations);
   }
   return [...merged.values()];
+}
+
+const MAX_REGULATIONS = 5;
+
+/** Union of related standards, without repeats (same framework and reference). */
+export function mergeRegulations(a: RegulationRef[] | undefined, b: RegulationRef[] | undefined): RegulationRef[] {
+  const out: RegulationRef[] = [];
+  const seen = new Set<string>();
+  for (const r of [...(a ?? []), ...(b ?? [])]) {
+    const key = `${r.framework}|${r.reference.toLowerCase().replace(/\s+/g, " ").trim()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out.slice(0, MAX_REGULATIONS);
+}
+
+export const PLAYBOOK_RULE_NOT_FOUND =
+  "The company rule this finding refers to could not be found word for word in the company rules document.";
+
+/**
+ * Company-rule fields to save for a finding. The cited rule is checked against
+ * the rules text like any quote; a rule that cannot be found is kept, marked
+ * unverified, and the finding is sent for review.
+ */
+export function playbookFields(
+  playbook: PlaybookContext | null,
+  r: Pick<AiRisk, "playbookRuleQuote" | "playbookGap">,
+): {
+  playbookTitle: string | null;
+  playbookRuleQuote: string | null;
+  playbookRuleVerified: boolean | null;
+  playbookGap: string | null;
+} {
+  if (!playbook || !r.playbookRuleQuote) {
+    return { playbookTitle: null, playbookRuleQuote: null, playbookRuleVerified: null, playbookGap: null };
+  }
+  const found = verifyQuote(playbook.content, r.playbookRuleQuote);
+  const verified = found.matchType !== "not_found" && found.start !== null && found.end !== null;
+  return {
+    playbookTitle: playbook.title,
+    playbookRuleQuote: verified ? playbook.content.slice(found.start!, found.end!) : r.playbookRuleQuote.trim(),
+    playbookRuleVerified: verified,
+    playbookGap: r.playbookGap ?? null,
+  };
 }
 
 /** The basis actually recorded: quotes decide whether anything was cited at all. */
@@ -224,7 +285,13 @@ export function verifyQuotes(content: string, quotes: string[]): VerifiedQuote[]
   return out;
 }
 
-async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[], log: Logger): Promise<void> {
+async function runAnalysis(
+  doc: DocumentRow,
+  runId: number,
+  chunks: TextChunk[],
+  log: Logger,
+  playbook: PlaybookContext | null,
+): Promise<void> {
   try {
     const existing = await db
       .select({
@@ -239,6 +306,7 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
     const perChunk = await mapWithConcurrency(chunks, CHUNK_CONCURRENCY, async (chunk) => {
       const risks = await analyzeChunk({
         documentTitle: doc.title,
+        playbook,
         existingRisks: existing,
         chunk,
         totalChunks: chunks.length,
@@ -288,6 +356,13 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
           quotesFound: quotes.filter((q) => q.result.matchType !== "not_found").length,
           confidence: r.confidence,
         });
+        const rule = playbookFields(playbook, r);
+        if (rule.playbookRuleVerified === false) {
+          review.reviewRequired = true;
+          review.reviewReasons = [...review.reviewReasons, PLAYBOOK_RULE_NOT_FOUND];
+        }
+        // Drafts are only offered for findings that remain Medium or above.
+        const clause = severity.severity === "low" ? null : (r.suggestedClause ?? null);
         const current = {
           description: r.description,
           category: r.category,
@@ -301,6 +376,10 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
           evidenceBasis: basis,
           interpretationNote: basis === "inferred" ? r.interpretationNote : null,
           ...review,
+          regulations: r.regulations ?? [],
+          ...rule,
+          suggestedClause: clause,
+          suggestedClauseTarget: clause ? (r.suggestedClauseTarget ?? null) : null,
           lastAnalysisRunId: runId,
         };
 

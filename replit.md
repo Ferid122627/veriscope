@@ -58,6 +58,9 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Server outcome rules (`lib/reassessment-rules.ts`) only move an outcome away from "resolved", never towards it: unrelated → unresolved; plan/promise → unresolved; policy or mixed → partially resolved; gaps listed → partially resolved; no verified quote, any unfound quote, or confidence < 0.6 → needs human review. The AI's own outcome is kept in `aiVerdict` and each change is explained in `guardrailNotes`.
 - A human decision on a recommendation (accept/reject, once, with name) is stored on the assessment and is separate from closing the risk.
 - Evidence documents for reassessment are capped at 100,000 characters (sent in one request) and stored with `purpose = evidence`.
+- Company rules (playbook): one row in `playbooks` (`GET/POST/DELETE /api/playbook`, upload replaces, max 40,000 chars because it is sent with every section). Snapshotted at analysis start (`analysis_runs.playbookTitle`) and sent in an untrusted `<company_rules>` block. The cited rule (`playbookRuleQuote`) is verified against the rules text like any quote; not found → `playbookRuleVerified=false` + review reason. Risks store a copy of the rule, so replacing/removing rules does not change history. Documents checked earlier need "Check again" to use new rules.
+- Compliance score (`lib/compliance-score.ts`, one source for the constants): 100 minus 18/12/7/2 per Critical/High/Medium/Low risk, floor 0. Closed and `unverified` (quote not found) risks are not counted; `no_evidence` (missing clause) risks are. Null until analyzed. List uses a SQL subquery; document detail returns the breakdown and overrides the score from the same rows.
+- `regulations` (GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law; max 3 from the AI, union ≤5 after merge) are "related areas to check", never violations. `suggestedClause` is a draft (UI: "Draft — have a lawyer review"), dropped by the server when the final severity is Low.
 
 ## Product
 
@@ -65,6 +68,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Phase 2 (done): PDF/DOCX/TXT upload with text extraction, AI risk analysis with verified evidence, progress and errors in the UI.
 - Phase 3 (done): evidence verification detail (match type, normalizations, ambiguity, basis, review reasons), filterable risk register, source document on risk detail, stable ids and preserved history across re-analysis.
 - Phase 4 (done): mitigation action management, reassessment against new evidence with a before/after comparison view, human decisions and approval-gated closing.
+- Auditor additions (done): company rules page, compliance score, related standards, draft replacement clauses (UI, API and PDF report).
 
 ## User preferences
 

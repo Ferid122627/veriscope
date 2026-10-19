@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, FileText, ShieldAlert } from "lucide-react";
+import { LayoutGrid, FileText, ShieldAlert, BookCheck } from "lucide-react";
 import { useGetSystemStatus, useHealthCheck } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ const nav = [
   { href: "/", label: "Overview", icon: LayoutGrid, testId: "link-nav-overview" },
   { href: "/documents", label: "Documents", icon: FileText, testId: "link-nav-documents" },
   { href: "/risks", label: "Risks to fix", icon: ShieldAlert, testId: "link-nav-risk-register" },
+  { href: "/playbook", label: "Company rules", icon: BookCheck, testId: "link-nav-playbook" },
 ];
 
 /** Veriscope logo: a lens with a check mark. The ring follows the text colour, the check uses the accent colour. */

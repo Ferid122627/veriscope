@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { documentsTable, type DocumentRow } from "@workspace/db";
+import { complianceScoreSql } from "./compliance-score";
 
 // Table-qualified on purpose: Drizzle renders columns unqualified in
 // single-table selects, which would bind "id" to risks.id inside the subquery.
@@ -26,9 +27,12 @@ export const documentSummaryColumns = {
   analyzedAt: documentsTable.analyzedAt,
   createdAt: documentsTable.createdAt,
   riskCount,
+  complianceScore: complianceScoreSql,
 };
 
-export function toDocumentSummary(row: Omit<DocumentRow, "content" | "contentHash"> & { riskCount: number }) {
+export function toDocumentSummary(
+  row: Omit<DocumentRow, "content" | "contentHash"> & { riskCount: number; complianceScore?: number | null },
+) {
   const { pageOffsets, ...rest } = row;
-  return { ...rest, pageCount: pageOffsets ? pageOffsets.length : null };
+  return { ...rest, complianceScore: rest.complianceScore ?? null, pageCount: pageOffsets ? pageOffsets.length : null };
 }

@@ -19,6 +19,8 @@ export const analysisRunsTable = pgTable(
     risksNew: integer("risks_new"),
     risksMatched: integer("risks_matched"),
     risksNotDetected: integer("risks_not_detected"),
+    // Title of the company rules document the run compared against, if any.
+    playbookTitle: text("playbook_title"),
     error: text("error"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),

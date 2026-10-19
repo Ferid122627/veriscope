@@ -48,5 +48,12 @@ export interface Document {
   /** @nullable */
   analyzedAt: Date | null;
   riskCount: number;
+  /**
+     * Server-computed 0-100 score from open risks (null until the document is checked)
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  complianceScore: number | null;
   createdAt: Date;
 }

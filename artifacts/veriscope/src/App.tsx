@@ -11,6 +11,7 @@ import DocumentDetail from '@/pages/document-detail';
 import Risks from '@/pages/risks';
 import RiskDetail from '@/pages/risk-detail';
 import Reassessment from '@/pages/reassessment';
+import Playbook from '@/pages/playbook';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
@@ -26,6 +27,7 @@ function Router() {
           <Route path="/risks" component={Risks} />
           <Route path="/risks/:id" component={RiskDetail} />
           <Route path="/risks/:id/reassessments/:assessmentId" component={Reassessment} />
+          <Route path="/playbook" component={Playbook} />
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>

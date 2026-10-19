@@ -5,3 +5,4 @@ export * from "./assessments";
 export * from "./evidence";
 export * from "./mitigation-actions";
 export * from "./reassessments";
+export * from "./playbooks";

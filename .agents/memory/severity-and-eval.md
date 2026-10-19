@@ -9,3 +9,8 @@ description: How risk severity is capped server-side, what the eval suite measur
 
 **Why:** the user asked for explainable, non-inflated severity and honest, non-invented metrics.
 **How to apply:** keep calibration lower-only; never present mocked-AI metrics as model accuracy; flag auth as required before a public deploy.
+
+## Company-rule findings and quoteSupport
+- With a playbook, the model at first marked rule-based findings "partial" because the company rule is not in the document quote, which sent every rule finding to review. The prompt now says the rule comes separately (playbookRuleQuote, verified against the rules text) and quoteSupport judges only the document's side. Verified with the real model on 2026-10-19.
+**Why:** the support check must stay strict, but must not penalise a finding for missing text it gets from the rules block.
+**How to apply:** if prompt wording around quoteSupport changes, re-run a real-model check with a playbook and confirm verified rule findings are not flagged "partial".

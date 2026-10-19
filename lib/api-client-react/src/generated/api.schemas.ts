@@ -91,6 +91,11 @@ export interface AnalysisRun {
      * @nullable
      */
   risksNotDetected: number | null;
+  /**
+     * Company rules document this run compared against (null = none)
+     * @nullable
+     */
+  playbookTitle: string | null;
   /** @nullable */
   error: string | null;
   startedAt: string;
@@ -167,29 +172,14 @@ export interface Document {
   /** @nullable */
   analyzedAt: string | null;
   riskCount: number;
-  createdAt: string;
-}
-
-export type DocumentDetail = Document & ({
-  /** Analysis runs, newest first */
-  analysisRuns: AnalysisRun[];
-  content: string;
   /**
-     * Character offset where each PDF page starts (index 0 = page 1)
+     * Server-computed 0-100 score from open risks (null until the document is checked)
+     * @minimum 0
+     * @maximum 100
      * @nullable
      */
-  pageOffsets: number[] | null;
-});
-
-export interface DocumentInput {
-  /**
-     * @minLength 1
-     * @maxLength 200
-     */
-  title: string;
-  /** @minLength 1 */
-  content: string;
-  filename?: string;
+  complianceScore: number | null;
+  createdAt: string;
 }
 
 export type RiskSeverity = typeof RiskSeverity[keyof typeof RiskSeverity];
@@ -201,6 +191,93 @@ export const RiskSeverity = {
   high: 'high',
   critical: 'critical',
 } as const;
+
+export interface ComplianceDeduction {
+  severity: RiskSeverity;
+  count: number;
+  pointsEach: number;
+  points: number;
+}
+
+/**
+ * How the compliance score was computed. Closed risks and risks whose quotes were not found in the document are not counted.
+ */
+export interface ComplianceBreakdown {
+  score: number;
+  countedRisks: number;
+  excludedUnverified: number;
+  excludedClosed: number;
+  deductions: ComplianceDeduction[];
+}
+
+export type DocumentDetail = Document & ({
+  compliance: ComplianceBreakdown | null;
+  /** Analysis runs, newest first */
+  analysisRuns: AnalysisRun[];
+  content: string;
+  /**
+     * Character offset where each PDF page starts (index 0 = page 1)
+     * @nullable
+     */
+  pageOffsets: number[] | null;
+});
+
+export interface Playbook {
+  id: number;
+  title: string;
+  /** @nullable */
+  filename: string | null;
+  sourceType: DocumentSource;
+  /** @nullable */
+  fileSize: number | null;
+  /** @nullable */
+  pageCount: number | null;
+  charCount: number;
+  content: string;
+  createdAt: string;
+}
+
+export interface PlaybookState {
+  playbook: Playbook | null;
+}
+
+export interface PlaybookUpload {
+  file: Blob;
+  /** @maxLength 200 */
+  title?: string;
+}
+
+export type RegulationFramework = typeof RegulationFramework[keyof typeof RegulationFramework];
+
+
+export const RegulationFramework = {
+  GDPR: 'GDPR',
+  ISO_27001: 'ISO 27001',
+  ISO_9001: 'ISO 9001',
+  SOC_2: 'SOC 2',
+  HIPAA: 'HIPAA',
+  NIST: 'NIST',
+  Local_law: 'Local law',
+} as const;
+
+/**
+ * A standard or law area a specialist should check. Not a finding that it is violated.
+ */
+export interface RegulationRef {
+  framework: RegulationFramework;
+  reference: string;
+}
+
+export interface DocumentInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @minLength 1 */
+  content: string;
+  filename?: string;
+}
 
 /**
  * closed is only set through an explicit human approval
@@ -306,6 +383,38 @@ export interface Risk {
   evidenceStatus: EvidenceStatus;
   reviewRequired: boolean;
   reviewReasons: string[];
+  /** Related standards to check (never a claim of violation) */
+  regulations: RegulationRef[];
+  /**
+     * Company rules document the rule was quoted from
+     * @nullable
+     */
+  playbookTitle: string | null;
+  /**
+     * The company rule this finding conflicts with or that requires a missing clause
+     * @nullable
+     */
+  playbookRuleQuote: string | null;
+  /**
+     * Whether the rule quote was found word for word in the company rules
+     * @nullable
+     */
+  playbookRuleVerified: boolean | null;
+  /**
+     * How the document differs from the company rule
+     * @nullable
+     */
+  playbookGap: string | null;
+  /**
+     * AI-drafted replacement or new clause. A draft for a lawyer to review.
+     * @nullable
+     */
+  suggestedClause: string | null;
+  /**
+     * Which clause the draft replaces, or where a new clause should go
+     * @nullable
+     */
+  suggestedClauseTarget: string | null;
   status: RiskStatus;
   /** Quotations in the current evidence set */
   evidenceCount: number;

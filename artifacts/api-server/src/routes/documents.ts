@@ -27,6 +27,7 @@ import { receiveFile, uploadedFilename } from "../lib/upload";
 import { aiRateLimit } from "../lib/rate-limit";
 import { loadRiskDetail } from "./risks";
 import { buildDocumentReport } from "../lib/report-pdf";
+import { computeCompliance } from "../lib/compliance-score";
 
 const router: IRouter = Router();
 
@@ -35,7 +36,7 @@ const selectSummary = documentSummaryColumns;
 
 function toDetail(row: DocumentRow & { riskCount: number }) {
   const { content, contentHash: _hash, ...summary } = row;
-  return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns: [] };
+  return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns: [], compliance: null };
 }
 
 router.get("/documents", async (_req, res) => {
@@ -178,7 +179,7 @@ router.get("/documents/:id/report.pdf", async (req, res) => {
         const detail = await loadRiskDetail(tx, r.id);
         if (detail) risks.push(detail);
       }
-      return { doc: toSummary(doc), risks };
+      return { doc: toSummary(doc), risks, compliance: doc.analyzedAt ? computeCompliance(risks) : null };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );
@@ -186,7 +187,7 @@ router.get("/documents/:id/report.pdf", async (req, res) => {
     res.status(404).json({ error: "Document not found" });
     return;
   }
-  const pdf = await buildDocumentReport(data.doc, data.risks);
+  const pdf = await buildDocumentReport(data.doc, data.risks, data.compliance);
   const base = data.doc.title.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="veriscope-report-${base}.pdf"`);
@@ -213,9 +214,24 @@ router.get("/documents/:id", async (req, res) => {
     .from(analysisRunsTable)
     .where(eq(analysisRunsTable.documentId, row.id))
     .orderBy(desc(analysisRunsTable.startedAt), desc(analysisRunsTable.id));
+  // Breakdown and score come from the same rows, so they always agree.
+  const compliance = row.analyzedAt
+    ? computeCompliance(
+        await db
+          .select({ severity: risksTable.severity, status: risksTable.status, evidenceStatus: risksTable.evidenceStatus })
+          .from(risksTable)
+          .where(eq(risksTable.documentId, row.id)),
+      )
+    : null;
   const { content, ...summary } = row;
   res.json(
-    GetDocumentResponse.parse({ ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns }),
+    GetDocumentResponse.parse({
+      ...toSummary({ ...summary, complianceScore: compliance?.score ?? null }),
+      content,
+      pageOffsets: row.pageOffsets ?? null,
+      analysisRuns,
+      compliance,
+    }),
   );
 });
 

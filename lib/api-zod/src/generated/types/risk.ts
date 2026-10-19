@@ -7,6 +7,7 @@
  */
 import type { EvidenceBasis } from './evidenceBasis';
 import type { EvidenceStatus } from './evidenceStatus';
+import type { RegulationRef } from './regulationRef';
 import type { RiskKind } from './riskKind';
 import type { RiskLikelihood } from './riskLikelihood';
 import type { RiskSeverity } from './riskSeverity';
@@ -49,6 +50,38 @@ export interface Risk {
   evidenceStatus: EvidenceStatus;
   reviewRequired: boolean;
   reviewReasons: string[];
+  /** Related standards to check (never a claim of violation) */
+  regulations: RegulationRef[];
+  /**
+     * Company rules document the rule was quoted from
+     * @nullable
+     */
+  playbookTitle: string | null;
+  /**
+     * The company rule this finding conflicts with or that requires a missing clause
+     * @nullable
+     */
+  playbookRuleQuote: string | null;
+  /**
+     * Whether the rule quote was found word for word in the company rules
+     * @nullable
+     */
+  playbookRuleVerified: boolean | null;
+  /**
+     * How the document differs from the company rule
+     * @nullable
+     */
+  playbookGap: string | null;
+  /**
+     * AI-drafted replacement or new clause. A draft for a lawyer to review.
+     * @nullable
+     */
+  suggestedClause: string | null;
+  /**
+     * Which clause the draft replaces, or where a new clause should go
+     * @nullable
+     */
+  suggestedClauseTarget: string | null;
   status: RiskStatus;
   /** Quotations in the current evidence set */
   evidenceCount: number;

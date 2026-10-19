@@ -36,6 +36,9 @@ import type {
   HealthStatus,
   ListRisksParams,
   MitigationAction,
+  Playbook,
+  PlaybookState,
+  PlaybookUpload,
   ReassessmentInput,
   ReassessmentRequest,
   Risk,
@@ -71,6 +74,236 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPlaybookUrl = () => {
+
+
+
+
+  return `/api/playbook`
+}
+
+/**
+ * @summary The current company rules document, if any
+ */
+export const getPlaybook = async ( options?: Parameters<typeof customFetch>[1]): Promise<PlaybookState> => {
+
+  return customFetch<PlaybookState>(getGetPlaybookUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlaybookQueryKey = () => {
+    return [
+    `/api/playbook`
+    ] as const;
+    }
+
+
+export const getGetPlaybookQueryOptions = <TData = Awaited<ReturnType<typeof getPlaybook>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlaybook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlaybookQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlaybook>>> = ({ signal }) => getPlaybook({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlaybook>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlaybookQueryResult = NonNullable<Awaited<ReturnType<typeof getPlaybook>>>
+export type GetPlaybookQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The current company rules document, if any
+ */
+
+export function useGetPlaybook<TData = Awaited<ReturnType<typeof getPlaybook>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlaybook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlaybookQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUploadPlaybookUrl = () => {
+
+
+
+
+  return `/api/playbook`
+}
+
+/**
+ * @summary Upload the company rules document (replaces the current one)
+ */
+export const uploadPlaybook = async (playbookUpload: PlaybookUpload, options?: Parameters<typeof customFetch>[1]): Promise<Playbook> => {
+    const formData = new FormData();
+formData.append(`file`, playbookUpload.file);
+if(playbookUpload.title !== undefined) {
+ formData.append(`title`, playbookUpload.title);
+ }
+
+  return customFetch<Playbook>(getUploadPlaybookUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadPlaybookMutationKey = () => ['uploadPlaybook'] as const;
+
+export const getUploadPlaybookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPlaybook>>, TError,UploadPlaybookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadPlaybook>>, TError,UploadPlaybookMutationVariables, TContext> => {
+
+const mutationKey = getUploadPlaybookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPlaybook>>, UploadPlaybookMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadPlaybook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadPlaybookMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPlaybook>>>
+    export type UploadPlaybookMutationBody = BodyType<PlaybookUpload>
+    export type UploadPlaybookMutationError = ErrorType<ErrorResponse>
+    export type UploadPlaybookMutationVariables = {data: BodyType<PlaybookUpload>}
+
+    /**
+ * @summary Upload the company rules document (replaces the current one)
+ */
+export const useUploadPlaybook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPlaybook>>, TError,UploadPlaybookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadPlaybook>>,
+        TError,
+        UploadPlaybookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadPlaybookMutationOptions(options));
+    }
+
+export const getDeletePlaybookUrl = () => {
+
+
+
+
+  return `/api/playbook`
+}
+
+/**
+ * @summary Remove the company rules document
+ */
+export const deletePlaybook = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeletePlaybookUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePlaybookMutationKey = () => ['deletePlaybook'] as const;
+
+export const getDeletePlaybookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePlaybook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePlaybook>>, TError,void, TContext> => {
+
+const mutationKey = getDeletePlaybookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePlaybook>>, void> = () => {
+
+
+          return  deletePlaybook(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePlaybookMutationResult = NonNullable<Awaited<ReturnType<typeof deletePlaybook>>>
+
+    export type DeletePlaybookMutationError = ErrorType<ErrorResponse>
+
+
+    /**
+ * @summary Remove the company rules document
+ */
+export const useDeletePlaybook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePlaybook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePlaybook>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeletePlaybookMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 

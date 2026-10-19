@@ -3,6 +3,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import { useInvalidateAll } from "@/hooks/use-invalidate";
 import { Plus, FileText, Trash2, Loader2 } from "lucide-react";
 import { AddDocumentDialog } from "@/components/add-document-dialog";
+import { ScoreBadge } from "@/components/compliance-score";
 import {
   useListDocuments, useDeleteDocument,
   getListDocumentsQueryKey,
@@ -39,8 +40,8 @@ export default function Documents() {
 
       {docs.isError ? <ErrorState error={docs.error} onRetry={() => docs.refetch()} /> : (
         <div className="overflow-hidden rounded-lg border border-card-border bg-card shadow-sm">
-          <div className="hidden grid-cols-[1fr_220px_90px_120px_40px] gap-x-4 border-b border-border bg-muted/40 px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground md:grid">
-            <span>Document</span><span>Status</span><span className="text-right">Risks found</span><span>Added</span><span className="sr-only">Actions</span>
+          <div className="hidden grid-cols-[1fr_220px_90px_70px_120px_40px] gap-x-4 border-b border-border bg-muted/40 px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground md:grid">
+            <span>Document</span><span>Status</span><span className="text-right">Risks found</span><span className="text-center" title="Compliance score out of 100">Score</span><span>Added</span><span className="sr-only">Actions</span>
           </div>
           {docs.isLoading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="border-b border-border px-4 py-3.5 last:border-0"><Skel className="h-4 w-2/3" /></div>)
             : !docs.data?.length ? (
@@ -48,18 +49,19 @@ export default function Documents() {
                 body="Add a contract, policy or report. Veriscope can then find risks in it, and every risk will quote the exact text it is based on."
                 action={<button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-first-document"><Plus className="size-4" aria-hidden /> Check your first document</button>} />
             ) : docs.data.map((d) => (
-              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_220px_90px_120px_40px]" data-testid={`row-document-${d.id}`}>
+              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_220px_90px_70px_120px_40px]" data-testid={`row-document-${d.id}`}>
                 <Link href={`/documents/${d.id}`} className="min-w-0" data-testid={`link-document-${d.id}`}>
                   <div className="truncate text-[14.5px] font-semibold group-hover:underline underline-offset-4 decoration-primary decoration-2">{d.title}</div>
                   <div className="truncate text-[12.5px] text-muted-foreground">{[d.filename, d.sourceType.toUpperCase(), `${num(d.charCount)} characters`].filter(Boolean).join(" · ")}</div>
                 </Link>
                 <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} />{d.purpose === "evidence" && <Chip testId={`tag-evidence-${d.id}`} className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}</span>
                 <span className="hidden text-right text-[14px] font-medium tabular md:block">{d.riskCount}</span>
+                <span className="hidden justify-center md:flex"><ScoreBadge score={d.complianceScore} testId={`text-score-${d.id}`} /></span>
                 <span className="hidden text-[13px] text-muted-foreground md:block">{ago(d.createdAt)}</span>
                 <button onClick={() => setPending({ id: d.id, title: d.title })} data-testid={`button-delete-document-${d.id}`} aria-label={`Delete ${d.title}`} className="grid size-8 place-items-center justify-self-end rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring">
                   <Trash2 className="size-3.5" />
                 </button>
-                <div className="col-span-2 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground md:hidden"><DocStatus status={d.status} />{d.purpose === "evidence" && <Chip className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}<span>{d.riskCount} {d.riskCount === 1 ? "risk" : "risks"} · {ago(d.createdAt)}</span></div>
+                <div className="col-span-2 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground md:hidden"><DocStatus status={d.status} />{d.purpose === "evidence" && <Chip className="border-primary/40 bg-primary/5 text-primary">Evidence</Chip>}<span>{d.riskCount} {d.riskCount === 1 ? "risk" : "risks"} · {ago(d.createdAt)}</span>{d.complianceScore != null && <span className="inline-flex items-center gap-1">Score <ScoreBadge score={d.complianceScore} /></span>}</div>
               </div>
             ))}
         </div>

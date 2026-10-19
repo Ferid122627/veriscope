@@ -16,6 +16,14 @@ export const EVIDENCE_STATUSES = ["verified", "partially_verified", "unverified"
 // future problem, or something the text shows is already wrong.
 export const RISK_KINDS = ["missing_protection", "potential_risk", "actual_issue"] as const;
 export type RiskKind = (typeof RISK_KINDS)[number];
+// Standards a finding can be related to. "Related" means where a specialist
+// should look, never a finding that the document breaks the standard.
+export const REGULATION_FRAMEWORKS = ["GDPR", "ISO 27001", "ISO 9001", "SOC 2", "HIPAA", "NIST", "Local law"] as const;
+export type RegulationFramework = (typeof REGULATION_FRAMEWORKS)[number];
+export interface RegulationRef {
+  framework: RegulationFramework;
+  reference: string;
+}
 export type RiskSeverity = (typeof RISK_SEVERITIES)[number];
 export type RiskStatus = (typeof RISK_STATUSES)[number];
 
@@ -44,6 +52,17 @@ export const risksTable = pgTable(
     evidenceStatus: text("evidence_status", { enum: EVIDENCE_STATUSES }).notNull().default("no_evidence"),
     reviewRequired: boolean("review_required").notNull().default(false),
     reviewReasons: jsonb("review_reasons").$type<string[]>().notNull().default([]),
+    regulations: jsonb("regulations").$type<RegulationRef[]>().notNull().default([]),
+    // Company rule (from the playbook) this finding conflicts with or that
+    // requires a missing clause. A copy, so later playbook changes do not alter it.
+    playbookTitle: text("playbook_title"),
+    playbookRuleQuote: text("playbook_rule_quote"),
+    // Whether the quoted rule was found word for word in the playbook text.
+    playbookRuleVerified: boolean("playbook_rule_verified"),
+    playbookGap: text("playbook_gap"),
+    // AI-drafted replacement or new clause; a draft for a lawyer to review.
+    suggestedClause: text("suggested_clause"),
+    suggestedClauseTarget: text("suggested_clause_target"),
     lastAnalysisRunId: integer("last_analysis_run_id"),
     status: text("status", { enum: RISK_STATUSES }).notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalysisRun } from './analysisRun';
+import type { ComplianceBreakdown } from './complianceBreakdown';
 import type { Document } from './document';
 
 export type DocumentDetail = Document & ({
+  compliance: ComplianceBreakdown | null;
   /** Analysis runs, newest first */
   analysisRuns: AnalysisRun[];
   content: string;

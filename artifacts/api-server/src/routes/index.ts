@@ -6,6 +6,7 @@ import risksRouter from "./risks";
 import dashboardRouter from "./dashboard";
 import actionsRouter from "./actions";
 import reassessmentsRouter from "./reassessments";
+import playbookRouter from "./playbook";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(risksRouter);
 router.use(dashboardRouter);
 router.use(actionsRouter);
 router.use(reassessmentsRouter);
+router.use(playbookRouter);
 
 export default router;
