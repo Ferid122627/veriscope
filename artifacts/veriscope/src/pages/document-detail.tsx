@@ -210,8 +210,8 @@ export default function DocumentDetail() {
           </span>} />
       )}
 
-      <div className="space-y-6">
-        <div className="min-w-0">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           {range && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-accent/25 bg-accent/10 px-3 py-2 text-[13px]" data-testid="banner-highlight">
               <span className="flex items-center gap-2" title={`Characters ${range.s}–${range.e}`}><Crosshair className="size-3.5" aria-hidden /> The quoted text is highlighted below.</span>
@@ -242,9 +242,9 @@ export default function DocumentDetail() {
           </article>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-2">
-          {d && <AnalysisPanel doc={d} riskCount={risks.data?.length ?? d.riskCount} />}
-          <Panel title="Risks found in this document" aside={risks.data && <span className="text-[12.5px] font-medium text-muted-foreground">{risks.data.length}</span>} bodyClass="p-0 max-h-[55vh] overflow-auto">
+        {d && <div className="min-w-0 lg:col-start-1 lg:row-start-2"><AnalysisPanel doc={d} riskCount={risks.data?.length ?? d.riskCount} /></div>}
+        <div className="relative min-h-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <Panel className="flex flex-col lg:absolute lg:inset-0" title="Risks found in this document" aside={risks.data && <span className="text-[12.5px] font-medium text-muted-foreground">{risks.data.length}</span>} bodyClass="p-0 max-h-[55vh] min-h-0 flex-1 overflow-auto lg:max-h-none">
             {risks.isError ? <div className="p-4"><ErrorState error={risks.error} onRetry={() => risks.refetch()} /></div>
               : risks.isLoading ? <div className="space-y-3 p-4">{[0, 1, 2].map((i) => <Skel key={i} className="h-10" />)}</div>
               : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks yet" body={d?.status === "analyzed" ? "Check complete. No clear risks were found in this document." : d?.status === "analyzing" ? "The AI is reading this document. Risks will appear here when it finishes." : "Select \"Find risks with AI\" to check this document."} />
