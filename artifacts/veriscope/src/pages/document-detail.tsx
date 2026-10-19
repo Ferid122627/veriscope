@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useSearch } from "wouter";
-import { ShieldAlert, Crosshair, Sparkles, RotateCw, Loader2, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Crosshair, Sparkles, RotateCw, Loader2, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetDocument, useListRisks, useAnalyzeDocument, getGetDocumentQueryKey, getListRisksQueryKey,
@@ -165,6 +165,7 @@ export default function DocumentDetail() {
   const rp = { documentId: id };
   const risks = useListRisks(rp, { query: { enabled: valid, queryKey: getListRisksQueryKey(rp) } });
   const markRef = useRef<HTMLElement>(null);
+  const [enlarged, setEnlarged] = useState(false);
   const invalidateAll = useInvalidateAll();
   const invRef = useRef(invalidateAll); invRef.current = invalidateAll;
 
@@ -209,7 +210,7 @@ export default function DocumentDetail() {
           </span>} />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="space-y-6">
         <div className="min-w-0">
           {range && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-accent/25 bg-accent/10 px-3 py-2 text-[13px]" data-testid="banner-highlight">
@@ -218,21 +219,35 @@ export default function DocumentDetail() {
             </div>
           )}
           <article className="rounded-lg border border-card-border bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3"><h2 className="text-[15px] font-semibold">Document text</h2><span className="text-[12.5px] text-muted-foreground">Exactly as added</span></div>
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+              <h2 className="text-[15px] font-semibold">Document text</h2>
+              <div className="flex items-center gap-3">
+                <span className="hidden text-[12.5px] text-muted-foreground sm:inline">Exactly as added</span>
+                <button type="button" onClick={() => setEnlarged((v) => !v)} aria-pressed={enlarged} data-testid="button-toggle-text-size"
+                  className="group inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12.5px] font-medium text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary active:scale-95">
+                  <span className="relative size-3.5">
+                    <Maximize2 className={`absolute inset-0 size-3.5 transition-all duration-300 ${enlarged ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`} aria-hidden />
+                    <Minimize2 className={`absolute inset-0 size-3.5 transition-all duration-300 ${enlarged ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`} aria-hidden />
+                  </span>
+                  {enlarged ? "Normal size" : "Enlarge text"}
+                </button>
+              </div>
+            </div>
             {doc.isLoading ? <div className="space-y-2.5 p-6">{Array.from({ length: 12 }).map((_, i) => <Skel key={i} className="h-3.5" />)}</div> : (
-              <div data-testid="text-document-content" className="max-h-[75vh] overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-quote text-[16px] leading-[1.75] text-foreground/90">
+              <div data-testid="text-document-content"
+                className={`overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-quote text-foreground/90 transition-[font-size,line-height,max-height] duration-500 ease-out ${enlarged ? "max-h-[90vh] text-[20px] leading-[1.9]" : "max-h-[75vh] text-[16px] leading-[1.75]"}`}>
                 {rendered}
               </div>
             )}
           </article>
         </div>
 
-        <div className="space-y-6 self-start lg:sticky lg:top-6">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           {d && <AnalysisPanel doc={d} riskCount={risks.data?.length ?? d.riskCount} />}
           <Panel title="Risks found in this document" aside={risks.data && <span className="text-[12.5px] font-medium text-muted-foreground">{risks.data.length}</span>} bodyClass="p-0 max-h-[55vh] overflow-auto">
             {risks.isError ? <div className="p-4"><ErrorState error={risks.error} onRetry={() => risks.refetch()} /></div>
               : risks.isLoading ? <div className="space-y-3 p-4">{[0, 1, 2].map((i) => <Skel key={i} className="h-10" />)}</div>
-              : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks yet" body={d?.status === "analyzed" ? "Check complete. No clear risks were found in this document." : d?.status === "analyzing" ? "The AI is reading this document. Risks will appear here when it finishes." : "Select \"Find risks with AI\" above to check this document."} />
+              : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks yet" body={d?.status === "analyzed" ? "Check complete. No clear risks were found in this document." : d?.status === "analyzing" ? "The AI is reading this document. Risks will appear here when it finishes." : "Select \"Find risks with AI\" to check this document."} />
               : risks.data.map((r) => (
                 <Link key={r.id} href={`/risks/${r.id}`} data-testid={`link-risk-${r.id}`} className="block border-b border-border px-4 py-3 last:border-0 hover:bg-muted/50">
                   <div className="flex items-center gap-2"><SeverityChip severity={r.severity} /><StatusChip status={r.status} /></div>
