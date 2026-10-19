@@ -1,0 +1,8 @@
+[
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a01","position":1,"filepath":"src/pages/slides/Cover.tsx","title":"VERISCOPE","description":"Sənəd → risk → təsdiq; layihə və komanda.","speakerNotes":""},
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a02","position":2,"filepath":"src/pages/slides/Product.tsx","title":"Müqaviləni qərara çeviririk","description":"Hüquqşünaslar və bizneslər üçün sənəd risklərinin aşkarlanması.","speakerNotes":""},
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a03","position":3,"filepath":"src/pages/slides/LocalFocus.tsx","title":"Azərbaycan bazarı üçün yerli fokus","description":"Yerli hüquqi kontekst və şirkət qaydaları.","speakerNotes":""},
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a04","position":4,"filepath":"src/pages/slides/Evidence.tsx","title":"Sadəcə AI cavabı yox — yoxlana bilən sübut","description":"Mənbədə yoxlanan sitat, uyğunluq balı və hesabat.","speakerNotes":""},
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a05","position":5,"filepath":"src/pages/slides/Demo.tsx","title":"Demo: 90 gündən 30 günə","description":"Demo ödəniş müddətinin sütun diaqramı ilə müqayisəsi; 67% yuvarlaqlaşdırılmış azalma.","speakerNotes":""},
+  {"id":"2a50cc6e-bb90-46da-9b70-abd63a463a06","position":6,"filepath":"src/pages/slides/Close.tsx","title":"AI aşkarlayır. İnsan qərar verir.","description":"Riskin həyat dövrü və insan təsdiqi.","speakerNotes":""}
+]

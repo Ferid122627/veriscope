@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/veriscope-pitch/"
+title = "Veriscope — Hackathon təqdimatı"
+description = "Azərbaycan dilində 6 slaydlıq, diaqram ağırlıqlı hackathon təqdimatı: sənəd riskləri, yerli hüquqi kontekst, yoxlanan sübutlar və insan təsdiqi."
+version = "1.0.0"
+id = "artifacts/veriscope-pitch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/veriscope-pitch/" ]
+localPort = 24513
+
+[services.development]
+run = "pnpm --filter @workspace/veriscope-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/veriscope-pitch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/veriscope-pitch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24513"
+BASE_PATH = "/veriscope-pitch/"
