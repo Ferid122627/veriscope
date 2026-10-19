@@ -1,0 +1,63 @@
+Proceed with Prompt 5: Security + End-to-End Verification for Veriscope.
+
+## Current state
+- Real Replit OpenAI integration is configured and real analysis/reassessment have succeeded.
+- Stage 1–3 evidence-support and reassessment guardrails are implemented.
+- Stage C is implemented: `GET /risks/:id` uses a PostgreSQL `REPEATABLE READ`, read-only transaction for a consistent snapshot.
+- The full suite passes 93/93 tests on five consecutive runs against `veriscope_test`.
+- Typecheck passes for all four packages.
+- `proxy-addr` ^2.0.8 override is preserved.
+- The development database `heliumdb` contains demo data: 3 documents, 9 risks, and 12 assessments.
+- No changes have been committed or pushed by the agent. Preserve all existing local work and user changes.
+
+## Goal
+Perform a focused security review and end-to-end verification of the existing implementation. Do not rebuild the application or begin UI polish.
+
+### 1. Security review
+Inspect the code for:
+- Authentication and authorization gaps, especially risk-status changes, document access, reassessment endpoints, and any ability to access another user's data.
+- Input validation and unsafe file-upload handling, including file type, size, parser failures, and malformed documents.
+- SQL/ORM query safety and transaction handling.
+- Secret exposure in responses, logs, source files, or client bundles.
+- Rate limiting, abuse risks, and unintended repeated AI spending.
+- Error handling that could leak internals or misrepresent failed AI operations as successful.
+- Any other concrete security issues relevant to this codebase.
+
+For every finding, provide severity, affected files/routes, a reproducible scenario, likely impact, and a recommended minimal fix. Clearly distinguish verified vulnerabilities from potential risks. Do not claim the app is secure merely because tests pass.
+
+### 2. End-to-end verification
+Verify the existing user journey:
+1. Upload a supported sample document.
+2. Extract its text.
+3. Run real AI risk analysis through the existing Replit integration, if needed to confirm the current integration still works. Minimize paid calls; do not repeat an already-proven real workflow unnecessarily.
+4. Verify evidence quotes against the original source.
+5. View the risk register and review flags.
+6. Upload new evidence and reassess an existing open risk.
+7. Confirm guardrails preserve cautious outcomes and human approval is still required to close a risk.
+8. Verify risk detail responses remain consistent with the new transaction implementation.
+
+Separate existing test evidence, mocked-AI verification, and real-AI results. Do not describe mocked tests as real provider verification.
+
+### 3. Safe execution rules
+- Prefer code inspection and existing automated tests first.
+- Use `veriscope_test` for automated tests.
+- Before any manual end-to-end action, identify the active database and the exact records that will be created. Preserve existing demo data.
+- Avoid extra real AI calls and unnecessary Replit credit usage. Ask me before any new paid AI tests that are not essential.
+- Do not close risks or delete existing demo records.
+- Do not print secrets or request that I paste API keys into chat.
+- Do not change unrelated UI, add features, install dependencies, or rewrite architecture.
+- Do not commit, push, reset, rebase, or rewrite Git history.
+- Preserve the Stage 1–3 changes, Stage C fix, test fixes, OpenAI integration, and `proxy-addr` security override.
+
+### 4. Output and stopping point
+First perform the audit and report:
+- Verified findings ranked by severity.
+- Potential issues that need more evidence.
+- Files and routes affected.
+- Test commands and actual results.
+- Which end-to-end steps were verified, and whether they used mocks or real AI.
+- Any necessary fixes, ordered by priority.
+
+Do not automatically apply broad security changes. If you find a high-severity issue, explain it and propose the smallest safe patch. For other changes, report the plan first.
+
+Stop after the report and wait for my approval before making security fixes or starting Prompt 6 (UI Polish + Hackathon Demo).

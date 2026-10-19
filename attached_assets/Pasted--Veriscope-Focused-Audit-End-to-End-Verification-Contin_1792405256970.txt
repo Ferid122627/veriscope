@@ -1,0 +1,90 @@
+# Veriscope — Focused Audit + End-to-End Verification
+
+Continue working on the existing Veriscope project. Do not rebuild it from scratch.
+
+## Current project state
+
+- Real Replit OpenAI integration is configured and has successfully completed real document analysis and reassessment.
+- Evidence quote verification and reassessment guardrails are implemented.
+- Risk detail reads use a PostgreSQL `REPEATABLE READ`, read-only transaction.
+- The full test suite previously passed 93/93 tests on five consecutive runs.
+- Typechecking previously passed for all four packages.
+- The `proxy-addr` `^2.0.8` security override must remain intact.
+- The development database contains demo data. Preserve existing documents, risks, and assessment history.
+- Existing local work may include uncommitted changes and commits ahead of origin. Preserve everything.
+
+## Goal
+
+Perform a time-efficient, focused review to ensure Veriscope is reliable enough for a live hackathon demonstration. Prioritize working functionality, correct results, and critical security risks over exhaustive enterprise security hardening.
+
+### 1. Verify the core demo workflow
+
+Inspect the current implementation and run existing automated tests first. Verify as much as possible without making unnecessary real AI calls:
+
+1. Upload a supported PDF or document.
+2. Confirm text extraction works and errors are handled clearly.
+3. Confirm risk analysis returns meaningful findings grounded in the original document.
+4. Verify that quoted evidence actually exists in the source text.
+5. Confirm the risk register and review flags display the analysis correctly.
+6. Add new evidence and reassess an existing open risk.
+7. Confirm conflicting, insufficient, or promise-only evidence cannot automatically close a risk.
+8. Confirm that closing a risk still requires human approval.
+9. Confirm risk detail responses remain consistent.
+10. Check loading, empty, and error states for the main workflow.
+
+Use existing tests and mock-based verification wherever possible. Do not repeat real provider calls that have already been proven unless a specific regression makes one necessary.
+
+### 2. Check only the most important security issues
+
+Perform a focused check for:
+
+- Unauthorized access to another user's documents or risks, if user separation exists.
+- Ability to close risks without the required human approval.
+- Unsafe file uploads that could crash the application or bypass expected validation.
+- Exposed API keys, secrets, or sensitive error details.
+- Endpoints that can trigger uncontrolled or repeated paid AI calls.
+
+Report other observations only if they represent a concrete and relevant risk. Do not spend excessive time on theoretical issues or comprehensive enterprise security hardening.
+
+For each confirmed issue, state:
+- Severity
+- Affected file or route
+- Reproducible scenario or supporting code evidence
+- Practical impact
+- Smallest reasonable fix
+
+Clearly distinguish verified vulnerabilities from potential concerns. Passing tests alone does not prove security.
+
+### 3. Execution rules
+
+- Inspect the current Git status before changing anything.
+- Use the dedicated `veriscope_test` database for automated tests.
+- Do not delete, reset, or overwrite demo data.
+- Do not make new paid AI calls without asking me first.
+- Do not print secrets or ask me to paste API keys into chat.
+- Do not install dependencies or redesign the architecture unless I approve.
+- Do not change UI styling yet; that belongs to the next phase.
+- Do not commit, push, reset, rebase, or rewrite Git history.
+- Preserve all existing changes, test fixes, integrations, guardrails, and security overrides.
+
+### 4. Fixing issues
+
+First run the relevant existing tests and identify any failures.
+
+You may fix a clearly reproducible, small, low-risk bug directly if the fix is necessary for the core demo workflow and stays within the scope above. Add or update a regression test for every fix.
+
+Do not make broad refactors. If a change could affect database records, risk-closing behavior, architecture, or existing user work, explain the proposed change and wait for my approval.
+
+### 5. Final report
+
+Return a concise report containing:
+
+1. Core workflow steps verified and their results.
+2. Actual automated test and typecheck results from this run.
+3. Which checks used mocks and which used real AI.
+4. Confirmed critical security issues, if any.
+5. Any small fixes made and the regression tests added.
+6. Remaining blockers that could disrupt a live demo.
+7. A clear recommendation on whether to proceed to the UI polish phase.
+
+Stop after this report. Do not begin UI polish until I approve it.
