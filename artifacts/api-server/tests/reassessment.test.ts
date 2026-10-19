@@ -110,7 +110,13 @@ async function waitForRequest(riskId: number, requestId: number) {
   for (let i = 0; i < 100; i++) {
     const risk = (await request(app).get(`/api/risks/${riskId}`)).body;
     const req = risk.reassessmentRequests.find((x: { id: number }) => x.id === requestId);
-    if (req.status !== "pending") return risk;
+    if (req.status !== "pending") {
+      // GET /risks/:id reads its sections in parallel on separate connections, so a
+      // read that overlapped the run's commit can mix old and new rows (e.g. a
+      // completed request without its assessment). The commit is finished now,
+      // so one more read is a consistent snapshot.
+      return (await request(app).get(`/api/risks/${riskId}`)).body;
+    }
     await new Promise((r) => setTimeout(r, 50));
   }
   throw new Error("reassessment did not finish");
@@ -357,10 +363,18 @@ describe("reassessment", () => {
   it("allows only one running reassessment per risk and accepts an uploaded file", async () => {
     const { risk } = await setupRisk();
     let release!: () => void;
+    // The reassessment runs in the background after the 202 response, so the mock
+    // is only called later. This promise resolves once it has been called and
+    // `release` is initialized.
+    let markCalled!: () => void;
+    const llmCalled = new Promise<void>((resolve) => {
+      markCalled = resolve;
+    });
     mockLlm.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           release = () => resolve(JSON.stringify(aiReassessment({ outcome: "unresolved", remainingGaps: ["x gap"] })));
+          markCalled();
         }),
     );
     const first = await request(app)
@@ -373,6 +387,7 @@ describe("reassessment", () => {
     const second = await request(app).post(`/api/risks/${risk.id}/reassessments`).field("content", `More evidence ${unique()}`);
     expect(second.status).toBe(409);
 
+    await llmCalled;
     release();
     const after = await waitForRequest(risk.id, first.body.id);
     expect(after.reassessmentRequests).toHaveLength(1);
