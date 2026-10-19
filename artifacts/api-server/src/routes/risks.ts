@@ -34,6 +34,8 @@ const riskColumns = {
   category: risksTable.category,
   severity: risksTable.severity,
   likelihood: risksTable.likelihood,
+  riskKind: risksTable.riskKind,
+  severityReason: risksTable.severityReason,
   businessImpact: risksTable.businessImpact,
   reviewNotes: risksTable.reviewNotes,
   recommendedMitigation: risksTable.recommendedMitigation,

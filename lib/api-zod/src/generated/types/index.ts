@@ -43,6 +43,7 @@ export * from './reassessmentRequest';
 export * from './reassessmentRequestStatus';
 export * from './risk';
 export * from './riskDetail';
+export * from './riskKind';
 export * from './riskLikelihood';
 export * from './riskSeverity';
 export * from './riskStatus';

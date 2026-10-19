@@ -5,6 +5,8 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+// Behind the Replit proxy the client address is the last X-Forwarded-For hop; used by the AI rate limiter.
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({

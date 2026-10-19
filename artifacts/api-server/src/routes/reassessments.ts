@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { aiRateLimit } from "../lib/rate-limit";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
@@ -34,7 +35,7 @@ function optionalInt(v: unknown): number | null | "invalid" {
   return Number.isInteger(n) && n > 0 ? n : "invalid";
 }
 
-router.post("/risks/:id/reassessments", receiveFile, async (req, res) => {
+router.post("/risks/:id/reassessments", aiRateLimit, receiveFile, async (req, res) => {
   const params = RequestReassessmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Invalid risk id" });

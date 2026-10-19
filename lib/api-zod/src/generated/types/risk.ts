@@ -7,6 +7,7 @@
  */
 import type { EvidenceBasis } from './evidenceBasis';
 import type { EvidenceStatus } from './evidenceStatus';
+import type { RiskKind } from './riskKind';
 import type { RiskLikelihood } from './riskLikelihood';
 import type { RiskSeverity } from './riskSeverity';
 import type { RiskStatus } from './riskStatus';
@@ -20,6 +21,13 @@ export interface Risk {
   category: string;
   severity: RiskSeverity;
   likelihood: RiskLikelihood | null;
+  /** Null for risks recorded before severity calibration */
+  riskKind: RiskKind | null;
+  /**
+     * Plain-language reason for the severity, including any server-side adjustment
+     * @nullable
+     */
+  severityReason: string | null;
   /** @nullable */
   businessImpact: string | null;
   /**

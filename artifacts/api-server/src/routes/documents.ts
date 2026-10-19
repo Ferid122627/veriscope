@@ -23,6 +23,7 @@ import { startAnalysis } from "../lib/analysis-runner";
 import { documentSummaryColumns, toDocumentSummary } from "../lib/document-summary";
 import { insertDocument } from "../lib/document-store";
 import { receiveFile, uploadedFilename } from "../lib/upload";
+import { aiRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -124,7 +125,7 @@ router.post("/documents/upload", receiveFile, async (req, res) => {
   res.status(201).json(UploadDocumentResponse.parse(toDetail({ ...outcome.created, riskCount: 0 })));
 });
 
-router.post("/documents/:id/analyze", async (req, res) => {
+router.post("/documents/:id/analyze", aiRateLimit, async (req, res) => {
   const params = AnalyzeDocumentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Invalid document id" });

@@ -740,10 +740,14 @@ components:
     EvidenceMatchType:
       type: string
       enum: [exact, normalized, not_found]
+    RiskKind:
+      type: string
+      enum: [missing_protection, potential_risk, actual_issue]
+      description: A protection the document lacks, a possible problem, or a problem the text states outright
     Risk:
       type: object
       required:
-        [id, documentId, documentTitle, title, description, category, severity, likelihood, businessImpact, reviewNotes, recommendedMitigation, evidenceBasis, interpretationNote, evidenceStatus, reviewRequired, reviewReasons, status, evidenceCount, verifiedEvidenceCount, openActionCount, lastAssessedAt, createdAt, updatedAt]
+        [id, documentId, documentTitle, title, description, category, severity, likelihood, riskKind, severityReason, businessImpact, reviewNotes, recommendedMitigation, evidenceBasis, interpretationNote, evidenceStatus, reviewRequired, reviewReasons, status, evidenceCount, verifiedEvidenceCount, openActionCount, lastAssessedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -763,6 +767,14 @@ components:
           oneOf:
             - $ref: "#/components/schemas/RiskLikelihood"
             - type: "null"
+        riskKind:
+          oneOf:
+            - $ref: "#/components/schemas/RiskKind"
+            - type: "null"
+          description: Null for risks recorded before severity calibration
+        severityReason:
+          type: ["string", "null"]
+          description: Plain-language reason for the severity, including any server-side adjustment
         businessImpact:
           type: ["string", "null"]
         reviewNotes:

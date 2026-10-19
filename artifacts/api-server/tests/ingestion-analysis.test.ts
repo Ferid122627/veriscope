@@ -199,7 +199,9 @@ describe("AI analysis", () => {
 
     const [risk] = (await request(app).get(`/api/risks?documentId=${id}`)).body;
     const detail = (await request(app).get(`/api/risks/${risk.id}`)).body;
-    expect(detail).toMatchObject({ severity: "high", likelihood: "medium", category: "Operational", status: "open" });
+    // One of the two quotes is not in the source, so the AI's "high" is held at medium and explained.
+    expect(detail).toMatchObject({ severity: "medium", likelihood: "medium", category: "Operational", status: "open" });
+    expect(detail.severityReason).toMatch(/Lowered from High to Medium: .*evidence is weak/);
     expect(detail.businessImpact).toMatch(/undetected/);
 
     const verified = detail.evidence.find((e: { verified: boolean }) => e.verified);

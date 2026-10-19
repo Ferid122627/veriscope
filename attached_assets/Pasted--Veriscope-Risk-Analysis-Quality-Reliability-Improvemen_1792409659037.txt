@@ -1,0 +1,165 @@
+# Veriscope — Risk Analysis Quality & Reliability Improvements
+
+Act as a senior full-stack engineer, AI evaluation engineer, and application security engineer. Your task is to inspect the existing Veriscope codebase, identify real problems, and fix them directly in the code.
+
+**Do not just provide recommendations. Implement, test, and verify the fixes.**
+
+## 1. First, inspect the existing project
+
+Before editing:
+- Understand the frontend, backend, database schema, AI integration, document-processing pipeline, risk assessment logic, evidence verification, reassessment flow, and risk-closure workflow.
+- Identify how risk severity, confidence, source quotations, and mitigation recommendations are currently generated and stored.
+- Run the existing tests and type checks to establish a baseline.
+- Identify the actual root causes of issues before changing code.
+
+Do not rewrite the application from scratch. Preserve its architecture and working functionality.
+
+## 2. Improve risk severity and prioritization
+
+The current test results suggest that too many risks may be classified as High.
+
+Implement a consistent, explainable severity assessment system.
+
+Requirements:
+- Evaluate likelihood, business impact, affected data, contractual exposure, and operational consequences where sufficient evidence exists.
+- Use High, Medium, and Low severity appropriately.
+- Do not automatically classify every missing contractual clause as High.
+- Distinguish between a missing contractual protection, a potential risk, and evidence of an actual violation.
+- Treat uncertainty explicitly instead of inventing facts.
+- Make severity depend on the document's context when possible.
+- Provide a short, plain-language explanation of why each severity level was assigned.
+- If evidence is insufficient, flag the risk for human review rather than confidently inventing a severity.
+- Keep severity, confidence, and review status as separate concepts if the existing architecture supports them.
+
+Do not simply lower all High ratings. Improve the underlying reasoning and scoring logic.
+
+## 3. Strengthen evidence quotation verification
+
+Every risk should be traceable to the uploaded source document.
+
+Implement or improve:
+- Verification that quoted evidence actually exists in the extracted source text.
+- Exact text matching where possible, with carefully controlled normalization for whitespace, line breaks, and PDF extraction artifacts.
+- Clear handling of partially matched, missing, or ambiguous quotations.
+- A visible verification status such as Verified, Partially verified, or Not verified.
+- Prevention of unsupported quotations from being presented as verified evidence.
+- A clear distinction between an exact source quote and an AI-generated explanation or inference.
+
+Never mark a quotation as verified merely because the AI claims that it is correct.
+
+If evidence cannot be verified, flag it for review and do not treat it as confirmed evidence.
+
+## 4. Improve risk detection and reduce false positives
+
+Review the existing risk-identification pipeline.
+
+Ensure that it:
+- Detects meaningful contractual gaps and potentially harmful clauses.
+- Does not treat every absent clause as automatically dangerous.
+- Recognizes protective clauses that already exist in the document.
+- Avoids duplicate risks describing the same underlying issue.
+- Does not invent clauses, facts, parties, dates, obligations, or legal violations.
+- Distinguishes explicit contractual language from inferred implications.
+- Explains why a clause matters in practical business terms.
+- Produces actionable mitigation recommendations linked to the identified risk.
+
+Do not claim that a contract violates a law unless the application has reliable, relevant legal evidence and sufficient jurisdictional context. Otherwise, describe the issue as a potential contractual or business risk.
+
+## 5. Create a repeatable evaluation and regression test suite
+
+Add automated tests using the project's existing testing framework wherever possible.
+
+Include test cases for:
+
+1. A genuine high-impact risk that should be classified High.
+2. A moderate contractual gap that should not automatically be classified High.
+3. A low-impact omission.
+4. A contract with strong protective clauses that should not trigger unnecessary risks.
+5. A missing data-deletion deadline.
+6. An undefined security-incident notification deadline.
+7. A liability cap that may affect data-breach claims.
+8. An unspecified dispute forum.
+9. A quotation that matches the source exactly.
+10. A quotation that does not exist in the source.
+11. A partially matching quotation.
+12. Duplicate risks covering the same issue.
+13. Ambiguous language that requires human review.
+14. A reassessment where new evidence resolves an earlier risk.
+15. A reassessment where the risk remains unresolved.
+
+Use synthetic fixtures and mocked AI responses for deterministic automated tests where practical. Do not make unnecessary paid AI calls during testing.
+
+Tests must validate both correct risk detection and false-positive behavior. Avoid brittle tests that require the AI to produce identical wording.
+
+Where useful, measure:
+- Recall: how many deliberately planted risks were detected.
+- Precision: how many reported risks were genuinely supported.
+- Severity calibration: whether risk levels are reasonable and justified.
+- Evidence verification accuracy.
+- Duplicate-risk rate.
+
+Report the metrics from the actual tests. Never invent results or claim that the system is accurate based on tests that were not run.
+
+## 6. Improve the user interface without breaking functionality
+
+Keep the interface simple and understandable for nontechnical business owners.
+
+- Use plain-language labels.
+- Make risk severity and evidence verification easy to understand.
+- Show the source quotation and the reason for the risk.
+- Display uncertainty and human-review requirements clearly.
+- Keep advanced technical details collapsed unless needed.
+- Preserve the existing visual identity and responsive behavior.
+- Do not remove existing working features just to simplify the interface.
+
+## 7. Preserve the current application and data
+
+This is critical.
+
+- Do not rewrite the project from scratch.
+- Do not change the database schema unless absolutely necessary; if a migration is required, make it backward-compatible and explain why.
+- Do not delete existing user data, documents, risks, or assessment history.
+- Do not replace real functionality with mock data.
+- Do not remove evidence-verification or human-approval safeguards.
+- Do not change API contracts unnecessarily.
+- Do not introduce new paid AI services or unnecessary dependencies.
+- Do not expose API keys, secrets, or sensitive document contents in logs.
+- Do not commit, push, reset, rebase, or discard existing changes.
+
+Preserve the existing `proxy-addr` override `^2.0.8` in `pnpm-workspace.yaml` and the Node.js runtime configuration in `.replit`. Do not downgrade the runtime or remove the dependency override.
+
+Continue using the project's existing AI integration and environment configuration. Do not hardcode credentials or model names that conflict with the current setup.
+
+## 8. Security checks
+
+Inspect the upload, document-processing, risk-management, and API routes.
+
+Verify:
+- File type and size validation.
+- Safe document parsing and useful error handling.
+- Protection against unauthorized destructive actions.
+- Appropriate authentication and authorization for any publicly accessible deployment.
+- Reasonable limits or safeguards against repeated, expensive AI operations.
+- No accidental disclosure of secrets or document contents through errors and logs.
+
+Implement appropriate fixes that fit the current architecture. Do not introduce fake authentication or claim that a security control exists unless it is actually enforced.
+
+## 9. Final verification
+
+After making changes:
+
+1. Run all relevant automated tests.
+2. Run type checks and builds for the affected packages.
+3. Fix regressions introduced by your changes.
+4. Review the diff for accidental deletions or unrelated modifications.
+5. Verify that the existing upload, analysis, evidence verification, reassessment, history, and human-approved risk-closure workflows still work.
+
+At the end, provide a concise report containing:
+- Problems found and their root causes.
+- Files changed and what changed in each.
+- Tests executed and their actual results.
+- Risk-detection, false-positive, evidence-verification, and severity-calibration results where measurable.
+- Any remaining limitations or unresolved issues.
+- Any manual steps required before deployment.
+
+**Execution rule:** Start by inspecting the codebase and running the baseline tests. Then implement the highest-impact fixes, add regression tests, and verify the final result. Do not stop after producing an audit or a proposed plan. If something cannot be safely fixed without more information, explain the blocker instead of guessing.

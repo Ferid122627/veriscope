@@ -13,6 +13,7 @@ import {
 import { chunkText, type TextChunk } from "./chunking";
 import { verifyQuote, pageForOffset, type QuoteVerification } from "./evidence-locator";
 import { analyzeChunk, type AiRisk, type ExistingRiskRef } from "./ai/risk-analysis";
+import { calibrateSeverity, describeSeverity } from "./risk-severity";
 import { countSeparatePassages, reviewEvidence, notDetectedReason, type EvidenceBasis, type QuoteSupport } from "./evidence-review";
 import {
   ANALYSIS_MODEL,
@@ -100,6 +101,39 @@ export function titleKey(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+const TITLE_STOPWORDS = new Set(["a", "an", "the", "of", "for", "to", "in", "on", "and", "or", "no", "not", "is", "are", "with", "by", "any", "lack", "lacks", "missing", "absence", "undefined", "unspecified", "unclear"]);
+
+/** Crude suffix stripping so "deleting" and "deletion" compare equal. */
+function stem(w: string): string {
+  return w.length > 5 ? w.replace(/(ations|ation|ions|ion|ings|ing|ed|es|s)$/, "") : w;
+}
+
+function titleTokens(title: string): Set<string> {
+  return new Set(
+    titleKey(title)
+      .split(" ")
+      .filter((w) => w.length > 1 && !TITLE_STOPWORDS.has(w))
+      .map(stem),
+  );
+}
+
+/**
+ * True when two titles very likely name the same issue: identical after
+ * normalisation, or sharing nearly all of their meaningful words. Deliberately
+ * strict, because wrongly merging two distinct risks hides one of them.
+ */
+export function sameIssue(a: string, b: string): boolean {
+  if (titleKey(a) === titleKey(b)) return true;
+  const ta = titleTokens(a);
+  const tb = titleTokens(b);
+  const [small, large] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
+  if (small.size < 3) return false;
+  let shared = 0;
+  for (const w of small) if (large.has(w)) shared++;
+  const jaccard = shared / (ta.size + tb.size - shared);
+  return jaccard >= 0.75 || shared / small.size >= (small.size >= 4 ? 0.8 : 0.9);
+}
+
 // When sections report the same risk, keep the weakest support claim.
 const SUPPORT_RANK: Record<QuoteSupport, number> = { supports: 0, partial: 1, does_not_support: 2, invalid: 3 };
 
@@ -113,14 +147,18 @@ export type MergedRisk = AiRisk & { matchedRiskId: number | null };
  */
 export function mergeRisks(perChunk: AiRisk[][], existing: Pick<ExistingRiskRef, "id" | "title">[] = []): MergedRisk[] {
   const existingIds = new Set(existing.map((r) => r.id));
-  const existingByTitle = new Map(existing.map((r) => [titleKey(r.title), r.id]));
   const merged = new Map<string, MergedRisk>();
+  const similarExistingId = (title: string): number | null => existing.find((e) => sameIssue(e.title, title))?.id ?? null;
+  const similarMergedKey = (title: string): string | undefined => {
+    for (const [k, m] of merged) if (m.matchedRiskId === null && sameIssue(m.title, title)) return k;
+    return undefined;
+  };
 
   for (const risk of perChunk.flat()) {
     const claimed = risk.matchesExistingRiskId;
     const matchedRiskId =
-      claimed !== null && existingIds.has(claimed) ? claimed : (existingByTitle.get(titleKey(risk.title)) ?? null);
-    const key = matchedRiskId !== null ? `id:${matchedRiskId}` : `title:${titleKey(risk.title)}`;
+      claimed !== null && existingIds.has(claimed) ? claimed : similarExistingId(risk.title);
+    const key = matchedRiskId !== null ? `id:${matchedRiskId}` : (similarMergedKey(risk.title) ?? `title:${titleKey(risk.title)}`);
     const prev = merged.get(key);
     if (!prev) {
       merged.set(key, { ...risk, evidenceQuotes: [...risk.evidenceQuotes], matchedRiskId });
@@ -129,7 +167,12 @@ export function mergeRisks(perChunk: AiRisk[][], existing: Pick<ExistingRiskRef,
     for (const q of risk.evidenceQuotes) {
       if (!prev.evidenceQuotes.some((p) => p.trim() === q.trim())) prev.evidenceQuotes.push(q);
     }
-    if (SEVERITY_RANK[risk.severity] > SEVERITY_RANK[prev.severity]) prev.severity = risk.severity;
+    if (SEVERITY_RANK[risk.severity] > SEVERITY_RANK[prev.severity]) {
+      // Keep the kind and reason that belong to the severity that is kept.
+      prev.severity = risk.severity;
+      prev.riskKind = risk.riskKind;
+      prev.severityReason = risk.severityReason;
+    }
     if (LIKELIHOOD_RANK[risk.likelihood] > LIKELIHOOD_RANK[prev.likelihood]) prev.likelihood = risk.likelihood;
     if (BASIS_RANK[risk.evidenceBasis] > BASIS_RANK[prev.evidenceBasis]) prev.evidenceBasis = risk.evidenceBasis;
     prev.interpretationNote ??= risk.interpretationNote;
@@ -235,10 +278,22 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
             quotes.map((q) => q.result),
           ),
         });
+        const severity = calibrateSeverity({
+          aiSeverity: r.severity,
+          likelihood: r.likelihood,
+          riskKind: r.riskKind,
+          basis,
+          quoteSupport: r.quoteSupport,
+          quotesCited: quotes.length,
+          quotesFound: quotes.filter((q) => q.result.matchType !== "not_found").length,
+          confidence: r.confidence,
+        });
         const current = {
           description: r.description,
           category: r.category,
-          severity: r.severity,
+          severity: severity.severity,
+          riskKind: r.riskKind ?? null,
+          severityReason: describeSeverity(r.severityReason, r.riskKind, r.severity, severity),
           likelihood: r.likelihood,
           businessImpact: r.businessImpact,
           reviewNotes: r.reviewNotes,
@@ -274,7 +329,7 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
             evidenceDocumentId: doc.id,
             model: ANALYSIS_MODEL,
             analysisRunId: runId,
-            severity: r.severity,
+            severity: severity.severity,
             likelihood: r.likelihood,
             evidenceBasis: basis,
           })

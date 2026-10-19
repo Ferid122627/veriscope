@@ -338,6 +338,7 @@ describe("re-analysis integrity", () => {
         aiRisk({
           title: "Single site without generator",
           severity: "critical",
+          riskKind: "actual_issue",
           matchesExistingRiskId: power.id,
           evidenceQuotes: ["Customer orders are processed only in Lisbon."],
         }),

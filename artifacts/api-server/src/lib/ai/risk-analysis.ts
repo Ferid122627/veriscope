@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import type { TextChunk } from "../chunking";
+import { RISK_KINDS } from "../risk-severity";
 import { QUOTE_SUPPORT_VALUES, type QuoteSupport } from "../evidence-review";
 import {
   MalformedAiOutputError,
@@ -41,6 +42,10 @@ export const AiRiskSchema = z
     category: z.enum(RISK_CATEGORIES),
     severity: z.enum(["low", "medium", "high", "critical"]),
     likelihood: z.enum(["low", "medium", "high"]),
+    // Optional so a response without them is still accepted; a missing kind is
+    // treated as unclassified (never Critical) by calibrateSeverity.
+    riskKind: z.enum(RISK_KINDS).nullish(),
+    severityReason: z.string().trim().max(1000).nullish(),
     businessImpact: z.string().trim().min(3).max(2000),
     recommendedMitigation: z.string().trim().min(3).max(2000),
     // May be empty: a finding with no quotable support is kept and flagged for review.
@@ -79,6 +84,8 @@ const RESPONSE_JSON_SCHEMA = {
           "category",
           "severity",
           "likelihood",
+          "riskKind",
+          "severityReason",
           "businessImpact",
           "recommendedMitigation",
           "evidenceQuotes",
@@ -98,6 +105,8 @@ const RESPONSE_JSON_SCHEMA = {
           category: { type: "string", enum: [...RISK_CATEGORIES] },
           severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
           likelihood: { type: "string", enum: ["low", "medium", "high"] },
+          riskKind: { type: "string", enum: [...RISK_KINDS] },
+          severityReason: str,
           businessImpact: str,
           recommendedMitigation: str,
           evidenceQuotes: { type: "array", items: str },
@@ -137,11 +146,25 @@ ANALYSIS RULES:
   Be strict: do not choose "supports" because the topic is related. supportGap: when quoteSupport is not "supports", say what the quotes do not establish; otherwise null.
 - interpretationNote: required for "inferred" (how the passages combine into the risk); otherwise null.
 - needsHumanReview: true if the evidence is ambiguous, incomplete, or the finding depends on assumptions.
-- severity: impact if the risk occurs (low, medium, high, critical). likelihood: how likely it is given the text (low, medium, high).
+- riskKind: classify every finding.
+  - "missing_protection": a protection or clause that the text does not contain (for example no deadline, no cap, no named forum). This is a gap, not proof that anything has gone wrong.
+  - "potential_risk": wording that is present but could cause harm depending on how it is applied (vague, one-sided, open-ended).
+  - "actual_issue": the text itself states something that is already harmful, non-compliant with the document's own terms, or clearly one-sided. Reserve this for explicit language.
+- severity (low, medium, high, critical) is the business impact IF the risk happens, judged from these factors when the text supports them: how likely harm is, how large the financial or operational impact could be, whether personal or customer data is involved, how much contractual exposure there is (liability, penalties, termination), and what would stop working.
+  - high: serious financial, data, legal or operational harm that is likely, or that the text makes hard to recover from.
+  - medium: a real gap or one-sided term whose harm is limited, uncertain, or depends on later events.
+  - low: minor omissions or housekeeping gaps with small consequences.
+  - critical: only for an "actual_issue" that is stated outright and would seriously damage the business.
+  - Do not give a missing clause High just because it is missing. Many missing clauses are Medium or Low. Do not raise severity to be safe; if you cannot tell, choose the lower level and set needsHumanReview true.
+  - Do not report a risk for a clause that is present and adequate. Notice protective clauses the document already contains and take them into account (for example a cap that carves out data-breach claims, or a stated deadline).
+- severityReason: one or two plain sentences, written for a business owner, saying why you chose this severity (which factors mattered and which you could not judge). Do not invent facts to justify it.
+- likelihood: how likely harm is given the text (low, medium, high).
+- Legal claims: never state that the document breaks or violates a law, regulation or standard. You do not know the jurisdiction. Describe it as a possible contractual or business risk and, if relevant, say a lawyer should confirm.
+- Distinguish what the document says (quote it) from what you infer (say so in interpretationNote). Do not invent clauses, parties, dates or obligations.
+- Report one finding per underlying issue. Several symptoms of one gap (for example no deadline and no process for the same obligation) are one risk, not several.
 - businessImpact: concrete consequences for the business. recommendedMitigation: one specific, actionable step.
 - rationale: why the quoted text indicates this risk. confidence: 0 to 1, your confidence that this is a real risk supported by the text.
 - reviewNotes: assumptions, ambiguity, missing context, or anything a human should verify; null if none.
-- Avoid duplicates: one risk per distinct issue.
 - matchesExistingRiskId: if <existing_risks> lists a risk describing the same underlying issue, set this to its id; otherwise null. Do not report a risk just because it is listed: report only what this text supports.`;
 
 export interface ExistingRiskRef {

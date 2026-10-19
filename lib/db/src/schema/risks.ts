@@ -12,6 +12,10 @@ export const RISK_LIKELIHOODS = ["low", "medium", "high"] as const;
 export const EVIDENCE_BASES = ["direct", "inferred", "none"] as const;
 // Computed by the server from verification results, never by the AI.
 export const EVIDENCE_STATUSES = ["verified", "partially_verified", "unverified", "no_evidence"] as const;
+// What kind of finding this is: a protection the document lacks, a possible
+// future problem, or something the text shows is already wrong.
+export const RISK_KINDS = ["missing_protection", "potential_risk", "actual_issue"] as const;
+export type RiskKind = (typeof RISK_KINDS)[number];
 export type RiskSeverity = (typeof RISK_SEVERITIES)[number];
 export type RiskStatus = (typeof RISK_STATUSES)[number];
 
@@ -27,6 +31,9 @@ export const risksTable = pgTable(
     category: text("category").notNull(),
     severity: text("severity", { enum: RISK_SEVERITIES }).notNull(),
     likelihood: text("likelihood", { enum: RISK_LIKELIHOODS }),
+    // Nullable so risks recorded before severity calibration stay valid.
+    riskKind: text("risk_kind", { enum: RISK_KINDS }),
+    severityReason: text("severity_reason"),
     businessImpact: text("business_impact"),
     // Uncertainty or points a human reviewer should check.
     reviewNotes: text("review_notes"),

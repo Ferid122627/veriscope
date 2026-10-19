@@ -257,6 +257,18 @@ export const EvidenceMatchType = {
   not_found: 'not_found',
 } as const;
 
+/**
+ * A protection the document lacks, a possible problem, or a problem the text states outright
+ */
+export type RiskKind = typeof RiskKind[keyof typeof RiskKind];
+
+
+export const RiskKind = {
+  missing_protection: 'missing_protection',
+  potential_risk: 'potential_risk',
+  actual_issue: 'actual_issue',
+} as const;
+
 export interface Risk {
   id: number;
   documentId: number;
@@ -266,6 +278,13 @@ export interface Risk {
   category: string;
   severity: RiskSeverity;
   likelihood: RiskLikelihood | null;
+  /** Null for risks recorded before severity calibration */
+  riskKind: RiskKind | null;
+  /**
+     * Plain-language reason for the severity, including any server-side adjustment
+     * @nullable
+     */
+  severityReason: string | null;
   /** @nullable */
   businessImpact: string | null;
   /**

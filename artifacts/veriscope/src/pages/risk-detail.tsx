@@ -148,6 +148,12 @@ export default function RiskDetail() {
                   <p className="mt-0.5 text-[14px] leading-relaxed" data-testid="text-business-impact">{r.businessImpact}</p>
                 </div>
               )}
+              {r.severityReason && (
+                <div className="mt-3 rounded-md bg-muted/60 px-3 py-2.5" data-testid="text-severity-reason">
+                  <div className="text-[12.5px] font-semibold text-muted-foreground">Why this priority</div>
+                  <p className="mt-0.5 text-[14px] leading-relaxed">{r.severityReason}</p>
+                </div>
+              )}
               {r.reviewNotes && (
                 <div className="mt-3 flex gap-3 rounded-md border border-dashed border-[hsl(28_85%_52%/0.6)] bg-[hsl(28_85%_52%/0.06)] px-3 py-2.5" data-testid="text-review-notes">
                   <MessageSquareWarning className="mt-0.5 size-4 shrink-0 text-[hsl(28_85%_36%)]" aria-hidden />
