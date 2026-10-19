@@ -1,0 +1,24 @@
+Approved. Create two short, clearly labeled synthetic evidence documents and run exactly two real AI reassessment calls against existing risk #5 in `heliumdb`.
+
+### 1. Conflicting evidence
+Create a synthetic document containing both statements:
+- “The data processing agreement was signed by both parties on 15 October 2026.”
+- “As of 19 October 2026, the supplier confirms that no signed data processing agreement has been received or executed.”
+
+Make the contradiction explicit and keep the document short. Do not present these fictional statements as real business facts.
+
+### 2. Promise-only evidence
+Create a second synthetic document stating that the supplier expects to sign and deliver the data processing agreement next quarter, but has not signed or delivered it yet.
+
+### Execution safeguards
+1. Confirm that `heliumdb` is still the active database and risk #5 is still open before each test.
+2. Use the application's existing upload and reassessment workflow. Do not bypass the server-side guardrails.
+3. Make exactly two real AI calls total, one per document. Do not make additional exploratory calls.
+4. Clearly label both documents as synthetic test data in their titles or metadata.
+5. Do not delete or overwrite existing demo data. Preserve the current risk status and all existing records.
+6. Do not close risk #5. If the application permits it, remove only the two newly created test documents and their associated records after capturing the results; otherwise, leave them clearly labeled and report their IDs.
+7. For each call, report the AI's original verdict, final guarded verdict, `guardrailNotes`, quote-verification results, and final risk status.
+8. Do not print secrets, change code/configuration, or commit, push, reset, rebase, or rewrite Git history.
+9. If the existing workflow cannot safely support this test, stop and report why rather than modifying production code.
+
+After exactly two calls, stop and report the results. Do not implement Stage C or start UI polish yet.
