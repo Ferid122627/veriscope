@@ -8,6 +8,7 @@ import actionsRouter from "./actions";
 import reassessmentsRouter from "./reassessments";
 import playbookRouter from "./playbook";
 import authRouter from "./auth";
+import assistantRouter from "./assistant";
 import { requireAuth, requireCompany } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -22,6 +23,7 @@ router.use(risksRouter);
 router.use(dashboardRouter);
 router.use(actionsRouter);
 router.use(reassessmentsRouter);
+router.use(assistantRouter);
 router.use("/playbook", requireCompany);
 router.use(playbookRouter);
 

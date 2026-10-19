@@ -26,6 +26,8 @@ import type {
   AnalyzeRequest,
   Assessment,
   AssessmentDecisionInput,
+  AssistantChatInput,
+  AssistantReply,
   AuthState,
   DashboardSummary,
   Document,
@@ -76,6 +78,95 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getAskAssistantUrl = () => {
+
+
+
+
+  return `/api/assistant/chat`
+}
+
+/**
+ * Stateless. The client sends the recent conversation; the last message must be from the user. Questions on other topics are refused.
+ * @summary Ask the assistant a question about your company's documents and risks, or a legal question
+ */
+export const askAssistant = async (assistantChatInput: AssistantChatInput, options?: Parameters<typeof customFetch>[1]): Promise<AssistantReply> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AssistantReply>(getAskAssistantUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantChatInput)
+  }
+);}
+
+
+
+
+
+export const getAskAssistantMutationKey = () => ['askAssistant'] as const;
+
+export const getAskAssistantMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askAssistant>>, TError,AskAssistantMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof askAssistant>>, TError,AskAssistantMutationVariables, TContext> => {
+
+const mutationKey = getAskAssistantMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof askAssistant>>, AskAssistantMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  askAssistant(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AskAssistantMutationResult = NonNullable<Awaited<ReturnType<typeof askAssistant>>>
+    export type AskAssistantMutationBody = BodyType<AssistantChatInput>
+    export type AskAssistantMutationError = ErrorType<ErrorResponse>
+    export type AskAssistantMutationVariables = {data: BodyType<AssistantChatInput>}
+
+    /**
+ * @summary Ask the assistant a question about your company's documents and risks, or a legal question
+ */
+export const useAskAssistant = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askAssistant>>, TError,AskAssistantMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof askAssistant>>,
+        TError,
+        AskAssistantMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAskAssistantMutationOptions(options));
+    }
 
 export const getGetPlaybookUrl = () => {
 

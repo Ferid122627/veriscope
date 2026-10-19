@@ -7,7 +7,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Workflows (start/restart from the Replit UI, not root `pnpm dev`):
   - `artifacts/api-server: API Server` — Express API on `/api`
   - `artifacts/veriscope: web` — React dashboard on `/`
-- `pnpm --filter @workspace/api-server test` — API integration tests (Vitest + Supertest, real dev DB, self-cleaning)
+- `pnpm --filter @workspace/api-server test` — API integration tests (Vitest + Supertest). Run them against the separate `veriscope_test` DB (point `DATABASE_URL` at it and unset the AI env vars): some tests delete all company rules.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate React Query hooks + Zod schemas after editing `lib/api-spec/openapi.yaml`
 - `pnpm --filter @workspace/db run push` — apply Drizzle schema to the dev DB (production schema is applied by Publish)
@@ -62,6 +62,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Company rules (playbook): one row in `playbooks` (`GET/POST/DELETE /api/playbook`, upload replaces, max 40,000 chars because it is sent with every section). Snapshotted at analysis start (`analysis_runs.playbookTitle`) and sent in an untrusted `<company_rules>` block. The cited rule (`playbookRuleQuote`) is verified against the rules text like any quote; not found → `playbookRuleVerified=false` + review reason. Risks store a copy of the rule, so replacing/removing rules does not change history. Documents checked earlier need "Check again" to use new rules.
 - Compliance score (`lib/compliance-score.ts`, one source for the constants): 100 minus 18/12/7/2 per Critical/High/Medium/Low risk, floor 0. Closed and `unverified` (quote not found) risks are not counted; `no_evidence` (missing clause) risks are. Null until analyzed. List uses a SQL subquery; document detail returns the breakdown and overrides the score from the same rows.
 - `regulations` (GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law, Azerbaijan law; max 3 from the AI, union ≤5 after merge) are "related areas to check", never violations. `suggestedClause` is a draft (UI: "Draft — have a lawyer review"), dropped by the server when the final severity is Low.
+- Assistant chat (`POST /api/assistant/chat`, page `/assistant`): stateless, the client sends the last ≤20 turns (kept in sessionStorage per user). Answers only `company` (own documents/risks/rules) or `legal` (general, Azerbaijan-focused) questions; `off_topic` is refused. Each question gets a fresh snapshot (≤40 documents with ≤60k chars of text total, ≤150 risks; company rules and rule gaps only for role `company`) in an untrusted `<company_data>` block; history in `<conversation>`, question in `<question>`. The server drops cited sources that are not in the snapshot, empties sources on refusals and replaces long refusals with a fixed text. Own rate limit (`ASSISTANT_RATE_LIMIT_*`, 30 per client / 15 min) separate from document checks.
 
 - Login: own session auth (no Clerk). `users` table, scrypt password hashes, signed httpOnly cookie `veriscope_session` (7 days, HMAC with `SESSION_SECRET`). Everything under `/api` except `/healthz` and `/auth/*` needs a session (`middlewares/auth.ts`). Two template accounts are created on startup if missing: `user` / `user1234` (role user) and `company` / `company1234` (role company) — change or remove before a real deploy.
 - Roles: only `company` can use `/api/playbook` (403 otherwise) and only company checks use the company rules. Data (documents, risks) is shared by all users; for role `user` every response and the PDF blank the `playbook*` fields, and a user's re-check never erases rule data a company check stored.
@@ -74,6 +75,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Phase 3 (done): evidence verification detail (match type, normalizations, ambiguity, basis, review reasons), filterable risk register, source document on risk detail, stable ids and preserved history across re-analysis.
 - Phase 4 (done): mitigation action management, reassessment against new evidence with a before/after comparison view, human decisions and approval-gated closing.
 - Auditor additions (done): company rules page, compliance score, related standards, draft replacement clauses (UI, API and PDF report).
+- Assistant (done): chat page limited to company and legal questions, with links to the documents and risks it used.
 
 ## User preferences
 
@@ -91,7 +93,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Orval generates boolean query params as `z.coerce.boolean()`, which reads "false" as true; parse them explicitly in the route (see `reviewRequired` in routes/risks.ts).
 - Orval generates `allOf` schemas (e.g. RiskDetail, DocumentDetail) as `.and()` intersections, so they have no `.shape`.
 - Status/severity/evidence enums are defined twice (Drizzle constants and OpenAPI); `tests/evidence-verification.test.ts` fails if they drift. The frontend derives its lists from the generated enums.
-- Reassessment and analysis share the mocked `requestStructuredCompletion`; tests distinguish them by `schemaName` (`risk_analysis` / `risk_reassessment`).
+- Reassessment and analysis share the mocked `requestStructuredCompletion`; tests distinguish them by `schemaName` (`risk_analysis` / `risk_reassessment` / `assistant_chat`).
 - API tests mock only `requestStructuredCompletion`; test fixtures in `artifacts/api-server/tests/fixtures/` contain unique text so duplicate detection never collides with real documents.
 
 ## Pointers

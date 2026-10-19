@@ -9,6 +9,35 @@ import * as zod from 'zod';
 
 
 /**
+ * Stateless. The client sends the recent conversation; the last message must be from the user. Questions on other topics are refused.
+ * @summary Ask the assistant a question about your company's documents and risks, or a legal question
+ */
+export const askAssistantBodyMessagesItemContentMax = 4000;
+
+export const askAssistantBodyMessagesMax = 20;
+
+
+
+export const AskAssistantBody = zod.object({
+  "messages": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string().min(1).max(askAssistantBodyMessagesItemContentMax)
+})).min(1).max(askAssistantBodyMessagesMax)
+})
+
+export const AskAssistantResponse = zod.object({
+  "topic": zod.enum(['company', 'legal', 'off_topic']),
+  "refused": zod.boolean().describe('True when the question was outside the allowed topics'),
+  "answer": zod.string(),
+  "sources": zod.array(zod.object({
+  "kind": zod.enum(['document', 'risk', 'company_rules']),
+  "id": zod.number().int().nullable(),
+  "title": zod.string()
+})).describe('Only records that exist and that this user may see')
+})
+
+
+/**
  * @summary The current company rules document, if any
  */
 export const GetPlaybookResponse = zod.object({

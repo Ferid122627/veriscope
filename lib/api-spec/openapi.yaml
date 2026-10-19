@@ -19,7 +19,52 @@ tags:
     description: Aggregates for the overview
   - name: playbook
     description: The company's own rules, compared against every document checked
+  - name: assistant
+    description: Chat assistant limited to questions about the company's own data and legal questions
 paths:
+  /assistant/chat:
+    post:
+      operationId: askAssistant
+      tags: [assistant]
+      summary: Ask the assistant a question about your company's documents and risks, or a legal question
+      description: Stateless. The client sends the recent conversation; the last message must be from the user. Questions on other topics are refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantChatInput"
+      responses:
+        "200":
+          description: The assistant's reply (or a refusal for an off-topic question)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantReply"
+        "400":
+          description: Invalid conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many AI requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: The AI provider failed or returned an unusable answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /playbook:
     get:
       operationId: getPlaybook
@@ -689,6 +734,61 @@ paths:
                   $ref: "#/components/schemas/ActivityItem"
 components:
   schemas:
+    AssistantMessageRole:
+      type: string
+      enum: [user, assistant]
+    AssistantMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          $ref: "#/components/schemas/AssistantMessageRole"
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    AssistantChatInput:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AssistantMessage"
+    AssistantTopic:
+      type: string
+      enum: [company, legal, off_topic]
+    AssistantSourceKind:
+      type: string
+      enum: [document, risk, company_rules]
+    AssistantSource:
+      type: object
+      required: [kind, id, title]
+      properties:
+        kind:
+          $ref: "#/components/schemas/AssistantSourceKind"
+        id:
+          type: ["integer", "null"]
+        title:
+          type: string
+    AssistantReply:
+      type: object
+      required: [topic, refused, answer, sources]
+      properties:
+        topic:
+          $ref: "#/components/schemas/AssistantTopic"
+        refused:
+          type: boolean
+          description: True when the question was outside the allowed topics
+        answer:
+          type: string
+        sources:
+          type: array
+          description: Only records that exist and that this user may see
+          items:
+            $ref: "#/components/schemas/AssistantSource"
     AuthUser:
       type: object
       required: [id, username, displayName, role]

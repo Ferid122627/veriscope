@@ -7,6 +7,8 @@ export interface RateLimitOptions {
   /** Max requests from everyone combined in the window. */
   global: number;
   now?: () => number;
+  /** Error shown when the limit is hit. */
+  message?: string;
 }
 
 /**
@@ -32,7 +34,7 @@ export function createRateLimiter(opts: RateLimitOptions): RequestHandler {
     const retryAfter = Math.ceil((Math.min(c.resetAt, global.resetAt) - t) / 1000);
     if (c.count >= opts.perClient || global.count >= opts.global) {
       res.setHeader("Retry-After", String(Math.max(1, retryAfter)));
-      res.status(429).json({ error: "Too many AI checks were started recently. Please wait a few minutes and try again." });
+      res.status(429).json({ error: opts.message ?? "Too many AI checks were started recently. Please wait a few minutes and try again." });
       return;
     }
     c.count++;
@@ -50,4 +52,12 @@ export const aiRateLimit = createRateLimiter({
   windowMs: num(process.env["AI_RATE_LIMIT_WINDOW_MS"], 15 * 60_000),
   perClient: num(process.env["AI_RATE_LIMIT_PER_CLIENT"], inTest ? 1_000_000 : 20),
   global: num(process.env["AI_RATE_LIMIT_GLOBAL"], inTest ? 1_000_000 : 60),
+});
+
+/** Separate, larger budget for assistant chat questions so chatting cannot block document checks. */
+export const assistantRateLimit = createRateLimiter({
+  windowMs: num(process.env["ASSISTANT_RATE_LIMIT_WINDOW_MS"], 15 * 60_000),
+  perClient: num(process.env["ASSISTANT_RATE_LIMIT_PER_CLIENT"], inTest ? 1_000_000 : 30),
+  global: num(process.env["ASSISTANT_RATE_LIMIT_GLOBAL"], inTest ? 1_000_000 : 120),
+  message: "Too many questions were asked recently. Please wait a few minutes and try again.",
 });

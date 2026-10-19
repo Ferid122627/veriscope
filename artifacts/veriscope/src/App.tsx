@@ -13,6 +13,7 @@ import RiskDetail from '@/pages/risk-detail';
 import Reassessment from '@/pages/reassessment';
 import Playbook from '@/pages/playbook';
 import Login from '@/pages/login';
+import Assistant from '@/pages/assistant';
 import { Loader2 } from 'lucide-react';
 import { useGetMe, getGetMeQueryKey } from '@workspace/api-client-react';
 import type { AuthUser } from '@workspace/api-client-react';
@@ -32,6 +33,7 @@ function Router({ user }: { user: AuthUser }) {
           <Route path="/risks/:id" component={RiskDetail} />
           <Route path="/risks/:id/reassessments/:assessmentId" component={Reassessment} />
           {user.role === 'company' && <Route path="/playbook" component={Playbook} />}
+          <Route path="/assistant">{() => <Assistant user={user} />}</Route>
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>

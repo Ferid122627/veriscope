@@ -5,6 +5,65 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+export type AssistantMessageRole = typeof AssistantMessageRole[keyof typeof AssistantMessageRole];
+
+
+export const AssistantMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AssistantMessage {
+  role: AssistantMessageRole;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  content: string;
+}
+
+export interface AssistantChatInput {
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  messages: AssistantMessage[];
+}
+
+export type AssistantTopic = typeof AssistantTopic[keyof typeof AssistantTopic];
+
+
+export const AssistantTopic = {
+  company: 'company',
+  legal: 'legal',
+  off_topic: 'off_topic',
+} as const;
+
+export type AssistantSourceKind = typeof AssistantSourceKind[keyof typeof AssistantSourceKind];
+
+
+export const AssistantSourceKind = {
+  document: 'document',
+  risk: 'risk',
+  company_rules: 'company_rules',
+} as const;
+
+export interface AssistantSource {
+  kind: AssistantSourceKind;
+  /** @nullable */
+  id: number | null;
+  title: string;
+}
+
+export interface AssistantReply {
+  topic: AssistantTopic;
+  /** True when the question was outside the allowed topics */
+  refused: boolean;
+  answer: string;
+  /** Only records that exist and that this user may see */
+  sources: AssistantSource[];
+}
+
 export type AuthUserRole = typeof AuthUserRole[keyof typeof AuthUserRole];
 
 
