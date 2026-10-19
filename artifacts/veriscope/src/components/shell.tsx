@@ -51,7 +51,11 @@ export function UserMenu({ user }: { user: AuthUser }) {
   const qc = useQueryClient();
   const logout = useLogout();
   const out = () => logout.mutate(undefined, {
-    onSettled: () => { qc.clear(); qc.setQueryData(getGetMeQueryKey(), null); },
+    onSettled: () => {
+      const meKey = getGetMeQueryKey();
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
+      qc.setQueryData(meKey, null);
+    },
   });
   return (
     <div className="flex items-center gap-2.5 text-[12.5px]" data-testid="user-menu">
