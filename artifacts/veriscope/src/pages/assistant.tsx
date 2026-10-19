@@ -27,9 +27,9 @@ const topicChip: Record<AssistantReply["topic"], { label: string; icon: typeof B
   off_topic: { label: "Outside my topics", icon: Ban, cls: "border-border text-muted-foreground" },
 };
 
-function sourceLink(s: AssistantSource) {
+function sourceLink(s: AssistantSource, withCode: boolean) {
   if (s.kind === "document") return { href: `/documents/${s.id}`, icon: FileText, label: s.title };
-  if (s.kind === "risk") return { href: `/risks/${s.id}`, icon: ShieldAlert, label: `${riskCode(s.id ?? 0)} · ${s.title}` };
+  if (s.kind === "risk") return { href: `/risks/${s.id}`, icon: ShieldAlert, label: withCode ? `${riskCode(s.id ?? 0)} · ${s.title}` : s.title };
   return { href: "/playbook", icon: BookCheck, label: `Company rules · ${s.title}` };
 }
 
@@ -125,7 +125,7 @@ export default function Assistant({ user }: { user: AuthUser }) {
                 <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-lg rounded-br-sm bg-primary px-3.5 py-2.5 text-[14px] leading-relaxed text-primary-foreground">{t.content}</div>
               </div>
             ) : (
-              <AssistantBubble key={i} turn={t} index={i} />
+              <AssistantBubble key={i} turn={t} index={i} withCode={user.role === "company"} />
             ),
           )}
 
@@ -169,7 +169,7 @@ export default function Assistant({ user }: { user: AuthUser }) {
   );
 }
 
-function AssistantBubble({ turn, index }: { turn: Extract<Turn, { role: "assistant" }>; index: number }) {
+function AssistantBubble({ turn, index, withCode }: { turn: Extract<Turn, { role: "assistant" }>; index: number; withCode: boolean }) {
   const chip = topicChip[turn.topic];
   return (
     <div className="flex justify-start" data-testid={`chat-assistant-${index}`}>
@@ -181,7 +181,7 @@ function AssistantBubble({ turn, index }: { turn: Extract<Turn, { role: "assista
             <div className="text-[12px] font-medium text-muted-foreground">Based on</div>
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {turn.sources.map((s) => {
-                const l = sourceLink(s);
+                const l = sourceLink(s, withCode);
                 return (
                   <li key={`${s.kind}-${s.id}`}>
                     <Link href={l.href} data-testid={`link-source-${s.kind}-${s.id ?? "rules"}`}

@@ -14,6 +14,10 @@ import Reassessment from '@/pages/reassessment';
 import Playbook from '@/pages/playbook';
 import Login from '@/pages/login';
 import Assistant from '@/pages/assistant';
+import { SimpleShell } from '@/simple/simple-shell';
+import SimpleHome from '@/simple/home';
+import SimpleDocument from '@/simple/document';
+import SimpleProblem from '@/simple/problem';
 import { Loader2 } from 'lucide-react';
 import { useGetMe, getGetMeQueryKey } from '@workspace/api-client-react';
 import type { AuthUser } from '@workspace/api-client-react';
@@ -41,6 +45,23 @@ function Router({ user }: { user: AuthUser }) {
   );
 }
 
+/** Normal users get a short, guided version of the app; company users keep the full workspace. */
+function SimpleRouter({ user }: { user: AuthUser }) {
+  return (
+    <SimpleShell user={user}>
+      <RoutedErrorBoundary>
+        <Switch>
+          <Route path="/" component={SimpleHome} />
+          <Route path="/documents/:id" component={SimpleDocument} />
+          <Route path="/risks/:id" component={SimpleProblem} />
+          <Route path="/assistant">{() => <Assistant user={user} />}</Route>
+          <Route component={NotFound} />
+        </Switch>
+      </RoutedErrorBoundary>
+    </SimpleShell>
+  );
+}
+
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
@@ -51,7 +72,7 @@ function AuthGate() {
   if (me.isLoading) return <div className="grid min-h-[100dvh] place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" aria-label="Loading" /></div>;
   const user = me.data?.user;
   if (!user) return <Login />;
-  return <Router user={user} />;
+  return user.role === 'company' ? <Router user={user} /> : <SimpleRouter user={user} />;
 }
 
 function App() {

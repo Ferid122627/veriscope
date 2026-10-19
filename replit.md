@@ -75,6 +75,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Phase 3 (done): evidence verification detail (match type, normalizations, ambiguity, basis, review reasons), filterable risk register, source document on risk detail, stable ids and preserved history across re-analysis.
 - Phase 4 (done): mitigation action management, reassessment against new evidence with a before/after comparison view, human decisions and approval-gated closing.
 - Auditor additions (done): company rules page, compliance score, related standards, draft replacement clauses (UI, API and PDF report).
+- Simple view for normal users (done): role `user` gets a separate, guided UI (`artifacts/veriscope/src/simple/`): two menu items (My documents, Ask a question), upload starts the check automatically, problems shown as plain cards ("Fix now / Important / Worth fixing / Minor", what is the problem, why it matters, what to do, optional quote). No scores, evidence statuses, reassessment or status workflow. Company users keep the full workspace unchanged.
 - Assistant (done): chat page limited to company and legal questions, with links to the documents and risks it used.
 
 ## User preferences

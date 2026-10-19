@@ -10,3 +10,8 @@ description: Approved visual direction, wording and token conventions for the we
 
 **Why:** the user asked for an everyday-business redesign: restrained, no gradients/neon/heavy shadows, no invented metrics, and a clear split between AI suggestion and human decision.
 **How to apply:** reuse tokens and kit components (PageHeader description, BackLink, Disclosure, Panel subtitle); do not add a second palette or decorative AI styling.
+
+## Two audiences
+- Normal users (role `user`) get a separate simplified UI; company users keep the full workspace. Do not add technical concepts (scores, evidence status, reassessment, R-codes) to the simple view.
+**Why:** the user said first-time normal users could not understand anything in the full UI, and asked to keep the company UI as is. UI language stays English (user's choice).
+**How to apply:** new features need a decision per audience; default to company-only unless it is plainly useful to a first-time user.

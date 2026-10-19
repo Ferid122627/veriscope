@@ -47,7 +47,7 @@ function SystemStatus() {
   );
 }
 
-function UserMenu({ user }: { user: AuthUser }) {
+export function UserMenu({ user }: { user: AuthUser }) {
   const qc = useQueryClient();
   const logout = useLogout();
   const out = () => logout.mutate(undefined, {
@@ -55,7 +55,7 @@ function UserMenu({ user }: { user: AuthUser }) {
   });
   return (
     <div className="flex items-center gap-2.5 text-[12.5px]" data-testid="user-menu">
-      <span className="text-sidebar-foreground/80"><span className="font-medium text-white" data-testid="text-user-name">{user.displayName}</span> · {user.role === "company" ? "Company" : "Normal"}</span>
+      <span className="text-sidebar-foreground/80"><span className="font-medium text-white" data-testid="text-user-name">{user.displayName}</span>{user.role === "company" && " · Company"}</span>
       <button onClick={out} disabled={logout.isPending} data-testid="button-logout" className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white focus-visible:outline-2 focus-visible:outline-sidebar-ring">
         <LogOut className="size-3.5" aria-hidden />Sign out
       </button>
