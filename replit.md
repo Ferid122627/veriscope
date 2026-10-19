@@ -12,6 +12,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate React Query hooks + Zod schemas after editing `lib/api-spec/openapi.yaml`
 - `pnpm --filter @workspace/db run push` — apply Drizzle schema to the dev DB (production schema is applied by Publish)
 - Required env: `DATABASE_URL` (Replit Postgres), `AI_INTEGRATIONS_OPENAI_BASE_URL` + `AI_INTEGRATIONS_OPENAI_API_KEY` (Replit AI Integrations; no personal key, usage billed to Replit credits). Without the AI vars the app runs but analysis returns 503.
+- Demo video (local only, gitignored): `generated-artifacts/demo-video/` — `./reset-db.sh` (empties demo data, keeps users), `node record.mjs` (drives the running app in Chromium), `node assemble.mjs` (writes `veriscope-demo.mp4`)
 - Sample documents for demos: `samples/supplier-agreement.pdf` (3 pages), `samples/continuity-memo.docx`; follow-up evidence for reassessing the data-processing risk: `samples/evidence-*.txt` (executed / promise / conflicting / unrelated)
 
 ## Stack

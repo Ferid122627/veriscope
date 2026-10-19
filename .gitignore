@@ -52,3 +52,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Generated output (demo videos, recordings)
+/generated-artifacts/

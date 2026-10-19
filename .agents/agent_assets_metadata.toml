@@ -72,3 +72,17 @@ mtime_ms = 1792418407013
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:5cbc7469-922c-40f2-b424-da460a670c5a/1f419ff6-cef9-4112-86d6-b86820a12f1b/3b3032b5-0398-454b-bfb4-625410ec3faf"
 storage_version_token = "1792418424321288"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "fHagOIBJj2qcxmPcQ7W_p"
+uri = "file://generated-artifacts/demo-video/veriscope-demo.mp4"
+type = "video"
+title = "Veriscope – hackathon demo video"
+description = "2.5-minute 1080p recording of the live app: sign-in, PDF uploads with drag animation, AI risk analysis, verified quotes, PDF report, evidence re-check, human approval, risk register and dashboard."
+logical_id = "d694f606-05ca-44f7-8fa7-5f9ad77fe2b4"
+content_hash = "sha256:6c35ee4b5f7c3bc056986e723edd472277b0881dc07d12426875d7be7e758543"
+size = 21860751
+mtime_ms = 1792421661266
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:e06b6638-9bd9-45f5-b36d-28daf600fde3/d694f606-05ca-44f7-8fa7-5f9ad77fe2b4/8b234105-9726-463d-b99d-84073038574d"
+storage_version_token = "1792421753239774"
+content_type = "video/mp4"
