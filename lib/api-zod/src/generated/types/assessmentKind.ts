@@ -11,5 +11,6 @@ export type AssessmentKind = typeof AssessmentKind[keyof typeof AssessmentKind];
 
 export const AssessmentKind = {
   initial: 'initial',
+  reanalysis: 'reanalysis',
   reassessment: 'reassessment',
 } as const;

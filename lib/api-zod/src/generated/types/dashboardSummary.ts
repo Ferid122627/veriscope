@@ -17,4 +17,5 @@ export interface DashboardSummary {
   totalEvidence: number;
   verifiedEvidence: number;
   totalAssessments: number;
+  risksRequiringReview: number;
 }

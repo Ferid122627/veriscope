@@ -51,9 +51,13 @@ function aiRisk(overrides: Record<string, unknown> = {}) {
     businessImpact: "Fraudulent or mistaken refunds could go undetected.",
     recommendedMitigation: "Require dual approval for refunds above a threshold.",
     evidenceQuotes: ["Customer refunds are approved by one person without review."],
+    evidenceBasis: "direct",
+    interpretationNote: null,
     rationale: "The text states a single approver with no review.",
     confidence: 0.9,
+    needsHumanReview: false,
     reviewNotes: null,
+    matchesExistingRiskId: null,
     ...overrides,
   };
 }
@@ -213,18 +217,14 @@ describe("AI analysis", () => {
 
     // A failed re-run keeps the previous results.
     mockLlm.mockResolvedValue("{not json");
-    expect((await request(app).post(`/api/documents/${id}/analyze`).send({ replaceExisting: true })).status).toBe(202);
+    expect((await request(app).post(`/api/documents/${id}/analyze`).send({ rerun: true })).status).toBe(202);
     const failed = await waitForAnalysis(id);
     expect(failed.status).toBe("failed");
     expect(failed.riskCount).toBe(1);
 
-    // A successful re-run replaces them, without duplicates.
-    mockLlm.mockResolvedValue(JSON.stringify({ risks: [aiRisk({ title: "Refund approval lacks segregation of duties" })] }));
-    expect((await request(app).post(`/api/documents/${id}/analyze`).send({ replaceExisting: true })).status).toBe(202);
-    const replaced = await waitForAnalysis(id);
-    expect(replaced).toMatchObject({ status: "analyzed", riskCount: 1 });
-    const titles = (await request(app).get(`/api/risks?documentId=${id}`)).body.map((r: { title: string }) => r.title);
-    expect(titles).toEqual(["Refund approval lacks segregation of duties"]);
+    expect(failed.analysisRuns.map((r: { status: string }) => r.status)).toEqual(["failed", "completed"]);
+    const afterFailure = (await request(app).get(`/api/risks/${risk.id}`)).body;
+    expect(afterFailure.assessments).toHaveLength(1);
   });
 
   it("records page numbers for PDF evidence", async () => {
@@ -237,7 +237,7 @@ describe("AI analysis", () => {
     await db.update(documentsTable).set({ status: "uploaded" }).where(eq(documentsTable.id, id));
 
     mockLlm.mockResolvedValue(JSON.stringify({ risks: [aiRisk()] }));
-    expect((await request(app).post(`/api/documents/${id}/analyze`).send({ replaceExisting: true })).status).toBe(202);
+    expect((await request(app).post(`/api/documents/${id}/analyze`).send({ rerun: true })).status).toBe(202);
     await waitForAnalysis(id);
     const [risk] = (await request(app).get(`/api/risks?documentId=${id}`)).body;
     const detail = (await request(app).get(`/api/risks/${risk.id}`)).body;

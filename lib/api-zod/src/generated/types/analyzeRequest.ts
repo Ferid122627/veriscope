@@ -7,6 +7,6 @@
  */
 
 export interface AnalyzeRequest {
-  /** Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds */
-  replaceExisting?: boolean;
+  /** Re-run analysis on an already analyzed document. Findings are matched to existing risks (which keep their IDs and gain a new assessment); nothing is deleted. */
+  rerun?: boolean;
 }

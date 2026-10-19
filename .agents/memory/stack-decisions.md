@@ -9,3 +9,5 @@ description: Why Postgres+Drizzle (not SQLite+Prisma), which ECC skills are inst
 - The user sends work as numbered phase briefs (attached .txt). Stay within each phase's scope; they want verified results reported (files changed, commands run, actual test output, blockers) and nothing fabricated.
 - AI provider: Replit AI Integrations (OpenAI) through the plain `openai` SDK with a lazily created client, not the skill's template package.
   **Why:** the template client throws at import time without env vars (the user requires a clear "missing credentials" error), and it brings chat/voice tables and packages this app does not need ("avoid unnecessary dependencies").
+- Re-analysis never deletes or replaces risks: findings are matched to existing risks (AI-suggested id validated server-side, else identical title) and history is appended as assessments.
+  **Why:** the Phase 3 brief requires stable ids and preserved earlier assessments; the Phase 2 delete-and-replace approach violated both.

@@ -44,7 +44,7 @@ export default function Overview() {
             <Stat testId="stat-documents" href="/documents" label="Documents" value={num(s.totalDocuments)} sub="Source texts on file" />
             <Stat testId="stat-risks" href="/risks" label="Risks" value={num(s.totalRisks)} sub={`${num(s.risksByStatus.open)} open`} />
             <Stat testId="stat-actions" href="/risks?status=mitigating" label="Open actions" value={num(s.openActions)} sub="Mitigations not done" />
-            <Stat testId="stat-assessments" href="/risks" label="Assessments" value={num(s.totalAssessments)} sub="Recorded verdicts" />
+            <Stat testId="stat-review" href="/risks?reviewRequired=true" label="Needs review" value={num(s.risksRequiringReview)} sub={`${num(s.totalAssessments)} assessments recorded`} />
           </>}
         </div>
       )}

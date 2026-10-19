@@ -5,6 +5,7 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { EvidenceStatus } from './evidenceStatus';
 import type { RiskSeverity } from './riskSeverity';
 import type { RiskStatus } from './riskStatus';
 
@@ -12,4 +13,6 @@ export type ListRisksParams = {
 severity?: RiskSeverity;
 status?: RiskStatus;
 documentId?: number;
+evidenceStatus?: EvidenceStatus;
+reviewRequired?: boolean;
 };

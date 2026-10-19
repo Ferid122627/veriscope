@@ -742,7 +742,7 @@ export const getListRisksQueryKey = (params?: ListRisksParams,) => {
     }
 
 
-export const getListRisksQueryOptions = <TData = Awaited<ReturnType<typeof listRisks>>, TError = ErrorType<unknown>>(params?: ListRisksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRisks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListRisksQueryOptions = <TData = Awaited<ReturnType<typeof listRisks>>, TError = ErrorType<ErrorResponse>>(params?: ListRisksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRisks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -761,14 +761,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListRisksQueryResult = NonNullable<Awaited<ReturnType<typeof listRisks>>>
-export type ListRisksQueryError = ErrorType<unknown>
+export type ListRisksQueryError = ErrorType<ErrorResponse>
 
 
 /**
  * @summary List risks with optional filters
  */
 
-export function useListRisks<TData = Awaited<ReturnType<typeof listRisks>>, TError = ErrorType<unknown>>(
+export function useListRisks<TData = Awaited<ReturnType<typeof listRisks>>, TError = ErrorType<ErrorResponse>>(
  params?: ListRisksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRisks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

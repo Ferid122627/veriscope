@@ -233,7 +233,23 @@ paths:
           required: false
           schema:
             type: integer
+        - name: evidenceStatus
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/EvidenceStatus"
+        - name: reviewRequired
+          in: query
+          required: false
+          schema:
+            type: boolean
       responses:
+        "400":
+          description: Invalid filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "200":
           description: Risks
           content:
@@ -344,9 +360,45 @@ components:
     AnalyzeRequest:
       type: object
       properties:
-        replaceExisting:
+        rerun:
           type: boolean
-          description: Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds
+          description: Re-run analysis on an already analyzed document. Findings are matched to existing risks (which keep their IDs and gain a new assessment); nothing is deleted.
+    AnalysisRunStatus:
+      type: string
+      enum: [running, completed, failed]
+    AnalysisRun:
+      type: object
+      required: [id, documentId, status, model, chunksTotal, risksIdentified, risksNew, risksMatched, risksNotDetected, error, startedAt, finishedAt]
+      properties:
+        id:
+          type: integer
+        documentId:
+          type: integer
+        status:
+          $ref: "#/components/schemas/AnalysisRunStatus"
+        model:
+          type: string
+        chunksTotal:
+          type: integer
+        risksIdentified:
+          type: ["integer", "null"]
+        risksNew:
+          type: ["integer", "null"]
+          description: Findings that did not match an existing risk
+        risksMatched:
+          type: ["integer", "null"]
+          description: Findings matched to an existing risk (same ID kept)
+        risksNotDetected:
+          type: ["integer", "null"]
+          description: Existing risks this run did not find again (kept, flagged for review)
+        error:
+          type: ["string", "null"]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: ["string", "null"]
+          format: date-time
     DocumentSource:
       type: string
       enum: [text, pdf, docx]
@@ -401,8 +453,13 @@ components:
       allOf:
         - $ref: "#/components/schemas/Document"
         - type: object
-          required: [content, pageOffsets]
+          required: [content, pageOffsets, analysisRuns]
           properties:
+            analysisRuns:
+              type: array
+              description: Analysis runs, newest first
+              items:
+                $ref: "#/components/schemas/AnalysisRun"
             content:
               type: string
             pageOffsets:
@@ -432,10 +489,21 @@ components:
     RiskLikelihood:
       type: string
       enum: [low, medium, high]
+    EvidenceBasis:
+      type: string
+      enum: [direct, inferred, none]
+      description: direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support
+    EvidenceStatus:
+      type: string
+      enum: [verified, partially_verified, unverified, no_evidence]
+      description: Computed by the server from verification against the source text
+    EvidenceMatchType:
+      type: string
+      enum: [exact, normalized, not_found]
     Risk:
       type: object
       required:
-        [id, documentId, documentTitle, title, description, category, severity, likelihood, businessImpact, reviewNotes, status, evidenceCount, openActionCount, createdAt, updatedAt]
+        [id, documentId, documentTitle, title, description, category, severity, likelihood, businessImpact, reviewNotes, recommendedMitigation, evidenceBasis, interpretationNote, evidenceStatus, reviewRequired, reviewReasons, status, evidenceCount, verifiedEvidenceCount, openActionCount, lastAssessedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -460,10 +528,34 @@ components:
         reviewNotes:
           type: ["string", "null"]
           description: Uncertainty or points a human reviewer should check
+        recommendedMitigation:
+          type: ["string", "null"]
+          description: Latest AI-recommended mitigation
+        evidenceBasis:
+          oneOf:
+            - $ref: "#/components/schemas/EvidenceBasis"
+            - type: "null"
+        interpretationNote:
+          type: ["string", "null"]
+          description: Why the risk is an interpretation of several passages rather than a direct quotation
+        evidenceStatus:
+          $ref: "#/components/schemas/EvidenceStatus"
+        reviewRequired:
+          type: boolean
+        reviewReasons:
+          type: array
+          items:
+            type: string
         status:
           $ref: "#/components/schemas/RiskStatus"
         evidenceCount:
           type: integer
+          description: Quotations in the current evidence set
+        verifiedEvidenceCount:
+          type: integer
+        lastAssessedAt:
+          type: ["string", "null"]
+          format: date-time
         openActionCount:
           type: integer
         createdAt:
@@ -475,7 +567,7 @@ components:
     Evidence:
       type: object
       description: A verbatim quote from a source document, located by character offsets
-      required: [id, riskId, documentId, documentTitle, quote, startOffset, endOffset, pageNumber, verified, createdAt]
+      required: [id, riskId, documentId, documentTitle, assessmentId, quote, claimedQuote, matchType, normalizations, matchCount, startOffset, endOffset, pageNumber, verified, createdAt]
       properties:
         id:
           type: integer
@@ -485,8 +577,24 @@ components:
           type: integer
         documentTitle:
           type: string
+        assessmentId:
+          type: ["integer", "null"]
         quote:
           type: string
+          description: Exact source characters when verified; otherwise the unverified claimed text
+        claimedQuote:
+          type: ["string", "null"]
+          description: The quotation exactly as the AI returned it
+        matchType:
+          $ref: "#/components/schemas/EvidenceMatchType"
+        normalizations:
+          type: array
+          description: Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes)
+          items:
+            type: string
+        matchCount:
+          type: integer
+          description: Number of places the quotation occurs in the document; more than 1 means the location is ambiguous
         startOffset:
           type: ["integer", "null"]
         endOffset:
@@ -525,10 +633,10 @@ components:
           format: date-time
     AssessmentVerdict:
       type: string
-      enum: [identified, resolved, partially_resolved, not_resolved, insufficient_evidence]
+      enum: [identified, resolved, partially_resolved, not_resolved, insufficient_evidence, not_detected]
     Assessment:
       type: object
-      required: [id, riskId, kind, verdict, rationale, confidence, evidenceDocumentId, model, createdAt]
+      required: [id, riskId, kind, verdict, rationale, confidence, evidenceDocumentId, model, analysisRunId, severity, likelihood, evidenceBasis, evidence, createdAt]
       properties:
         id:
           type: integer
@@ -536,7 +644,7 @@ components:
           type: integer
         kind:
           type: string
-          enum: [initial, reassessment]
+          enum: [initial, reanalysis, reassessment]
         verdict:
           $ref: "#/components/schemas/AssessmentVerdict"
         rationale:
@@ -547,6 +655,25 @@ components:
           type: ["integer", "null"]
         model:
           type: ["string", "null"]
+        analysisRunId:
+          type: ["integer", "null"]
+        severity:
+          oneOf:
+            - $ref: "#/components/schemas/RiskSeverity"
+            - type: "null"
+        likelihood:
+          oneOf:
+            - $ref: "#/components/schemas/RiskLikelihood"
+            - type: "null"
+        evidenceBasis:
+          oneOf:
+            - $ref: "#/components/schemas/EvidenceBasis"
+            - type: "null"
+        evidence:
+          type: array
+          description: Quotations cited by this assessment
+          items:
+            $ref: "#/components/schemas/Evidence"
         createdAt:
           type: string
           format: date-time
@@ -554,9 +681,12 @@ components:
       allOf:
         - $ref: "#/components/schemas/Risk"
         - type: object
-          required: [evidence, actions, assessments]
+          required: [evidence, actions, assessments, sourceDocument]
           properties:
+            sourceDocument:
+              $ref: "#/components/schemas/Document"
             evidence:
+              description: Current evidence (from the latest assessment that identified the risk)
               type: array
               items:
                 $ref: "#/components/schemas/Evidence"
@@ -593,7 +723,7 @@ components:
     DashboardSummary:
       type: object
       required:
-        [totalDocuments, totalRisks, risksBySeverity, risksByStatus, openActions, totalEvidence, verifiedEvidence, totalAssessments]
+        [totalDocuments, totalRisks, risksBySeverity, risksByStatus, openActions, totalEvidence, verifiedEvidence, totalAssessments, risksRequiringReview]
       properties:
         totalDocuments:
           type: integer
@@ -610,6 +740,8 @@ components:
         verifiedEvidence:
           type: integer
         totalAssessments:
+          type: integer
+        risksRequiringReview:
           type: integer
     ActivityItem:
       type: object

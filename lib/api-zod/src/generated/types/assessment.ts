@@ -7,6 +7,10 @@
  */
 import type { AssessmentKind } from './assessmentKind';
 import type { AssessmentVerdict } from './assessmentVerdict';
+import type { Evidence } from './evidence';
+import type { EvidenceBasis } from './evidenceBasis';
+import type { RiskLikelihood } from './riskLikelihood';
+import type { RiskSeverity } from './riskSeverity';
 
 export interface Assessment {
   id: number;
@@ -20,5 +24,12 @@ export interface Assessment {
   evidenceDocumentId: number | null;
   /** @nullable */
   model: string | null;
+  /** @nullable */
+  analysisRunId: number | null;
+  severity: RiskSeverity | null;
+  likelihood: RiskLikelihood | null;
+  evidenceBasis: EvidenceBasis | null;
+  /** Quotations cited by this assessment */
+  evidence: Evidence[];
   createdAt: Date;
 }

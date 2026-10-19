@@ -2,9 +2,19 @@ import type { ReactNode } from "react";
 import { formatDistanceToNowStrict, format } from "date-fns";
 import { AlertTriangle, RotateCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BadgeCheck, CircleAlert, CircleDashed, CircleSlash } from "lucide-react";
 
-export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-export const STATUSES = ["open", "mitigating", "resolved"] as const;
+import { RiskSeverity, RiskStatus, RiskLikelihood, EvidenceStatus as EvidenceStatusEnum } from "@workspace/api-client-react";
+import type { EvidenceStatus } from "@workspace/api-client-react";
+
+const sevRank: Record<RiskSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+export const SEVERITIES = (Object.values(RiskSeverity) as RiskSeverity[]).sort((a, b) => sevRank[a] - sevRank[b]);
+export const STATUSES = Object.values(RiskStatus) as RiskStatus[];
+export const LIKELIHOODS = Object.values(RiskLikelihood) as RiskLikelihood[];
+export const EVIDENCE_STATUSES = Object.values(EvidenceStatusEnum) as EvidenceStatus[];
+export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
+  verified: "Verified", partially_verified: "Partially verified", unverified: "Unverified", no_evidence: "No quotation",
+};
 
 export const sevStyle: Record<string, { dot: string; chip: string; bar: string }> = {
   critical: { dot: "bg-[hsl(4_72%_48%)]", chip: "text-[hsl(4_72%_40%)] bg-[hsl(4_72%_48%/0.1)] border-[hsl(4_72%_48%/0.3)]", bar: "bg-[hsl(4_72%_48%)]" },
@@ -132,3 +142,12 @@ export function existingDocId(err: unknown): number | null {
   const v = (err as { data?: { existingDocumentId?: number } } | null)?.data?.existingDocumentId;
   return typeof v === "number" ? v : null;
 }
+
+export function EvidenceStatusBadge({ status, testId }: { status: EvidenceStatus; testId?: string }) {
+  if (status === "verified") return <Chip testId={testId} className="border-foreground/20 bg-accent text-accent-foreground"><BadgeCheck className="size-3" />{evidenceStatusLabel.verified}</Chip>;
+  if (status === "partially_verified") return <Chip testId={testId} className="border-[hsl(48_85%_50%/0.5)] text-[hsl(42_80%_30%)] bg-[hsl(48_85%_50%/0.1)]"><CircleDashed className="size-3" />{evidenceStatusLabel.partially_verified}</Chip>;
+  if (status === "unverified") return <Chip testId={testId} className="border-dashed border-destructive/60 text-destructive bg-destructive/5"><CircleAlert className="size-3" />{evidenceStatusLabel.unverified}</Chip>;
+  return <Chip testId={testId} className="border-border text-muted-foreground"><CircleSlash className="size-3" />{evidenceStatusLabel.no_evidence}</Chip>;
+}
+
+export const riskCode = (id: number) => `R-${String(id).padStart(4, "0")}`;

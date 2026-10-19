@@ -6,11 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Assessment } from './assessment';
+import type { Document } from './document';
 import type { Evidence } from './evidence';
 import type { MitigationAction } from './mitigationAction';
 import type { Risk } from './risk';
 
 export type RiskDetail = Risk & {
+  sourceDocument: Document;
+  /** Current evidence (from the latest assessment that identified the risk) */
   evidence: Evidence[];
   actions: MitigationAction[];
   assessments: Assessment[];

@@ -4,7 +4,6 @@ import {
   db,
   documentsTable,
   risksTable,
-  evidenceTable,
   mitigationActionsTable,
   assessmentsTable,
 } from "@workspace/db";
@@ -13,6 +12,7 @@ import { GetDashboardSummaryResponse, GetRecentActivityResponse } from "@workspa
 const router: IRouter = Router();
 
 const ACTIVITY_LIMIT = 20;
+const ASSESSMENT_KIND_LABEL = { initial: "Initial assessment", reanalysis: "Re-analysis", reassessment: "Reassessment" } as const;
 
 router.get("/dashboard/summary", async (_req, res) => {
   const [[docs], [risks], [actions], [evidence], [assessments]] = await Promise.all([
@@ -27,17 +27,21 @@ router.get("/dashboard/summary", async (_req, res) => {
         open: sql<number>`count(*) filter (where ${risksTable.status} = 'open')::int`,
         mitigating: sql<number>`count(*) filter (where ${risksTable.status} = 'mitigating')::int`,
         resolved: sql<number>`count(*) filter (where ${risksTable.status} = 'resolved')::int`,
+        review: sql<number>`count(*) filter (where ${risksTable.reviewRequired})::int`,
       })
       .from(risksTable),
     db
       .select({ open: sql<number>`count(*) filter (where ${mitigationActionsTable.status} <> 'done')::int` })
       .from(mitigationActionsTable),
-    db
-      .select({
-        total: sql<number>`count(*)::int`,
-        verified: sql<number>`count(*) filter (where ${evidenceTable.verified})::int`,
-      })
-      .from(evidenceTable),
+    // Only each risk's current evidence set, so re-analysis does not double-count quotes.
+    db.execute<{ total: number; verified: number }>(sql`
+      select count(*)::int as total, (count(*) filter (where e.verified))::int as verified
+      from evidence e
+      where e.assessment_id is null or e.assessment_id = (
+        select a.id from assessments a
+        where a.risk_id = e.risk_id and a.verdict = 'identified'
+        order by a.created_at desc, a.id desc limit 1
+      )`).then((r) => r.rows),
     db.select({ total: sql<number>`count(*)::int` }).from(assessmentsTable),
   ]);
 
@@ -56,6 +60,7 @@ router.get("/dashboard/summary", async (_req, res) => {
       totalEvidence: evidence!.total,
       verifiedEvidence: evidence!.verified,
       totalAssessments: assessments!.total,
+      risksRequiringReview: risks!.review,
     }),
   );
 });
@@ -116,7 +121,7 @@ router.get("/dashboard/activity", async (_req, res) => {
     ...assessments.map((a) => ({
       id: `assessment-${a.id}`,
       type: "assessment_recorded" as const,
-      message: `${a.kind === "initial" ? "Initial assessment" : "Reassessment"}: ${a.riskTitle} — ${a.verdict.replace(/_/g, " ")}`,
+      message: `${ASSESSMENT_KIND_LABEL[a.kind]}: ${a.riskTitle} — ${a.verdict.replace(/_/g, " ")}`,
       createdAt: a.createdAt,
       documentId: a.documentId,
       riskId: a.riskId,

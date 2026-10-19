@@ -5,6 +5,8 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { EvidenceBasis } from './evidenceBasis';
+import type { EvidenceStatus } from './evidenceStatus';
 import type { RiskLikelihood } from './riskLikelihood';
 import type { RiskSeverity } from './riskSeverity';
 import type { RiskStatus } from './riskStatus';
@@ -25,8 +27,26 @@ export interface Risk {
      * @nullable
      */
   reviewNotes: string | null;
+  /**
+     * Latest AI-recommended mitigation
+     * @nullable
+     */
+  recommendedMitigation: string | null;
+  evidenceBasis: EvidenceBasis | null;
+  /**
+     * Why the risk is an interpretation of several passages rather than a direct quotation
+     * @nullable
+     */
+  interpretationNote: string | null;
+  evidenceStatus: EvidenceStatus;
+  reviewRequired: boolean;
+  reviewReasons: string[];
   status: RiskStatus;
+  /** Quotations in the current evidence set */
   evidenceCount: number;
+  verifiedEvidenceCount: number;
+  /** @nullable */
+  lastAssessedAt: Date | null;
   openActionCount: number;
   createdAt: Date;
   updatedAt: Date;

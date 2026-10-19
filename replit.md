@@ -44,13 +44,19 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Analysis runs in-process in the background: `POST /documents/:id/analyze` atomically claims the document (status → analyzing) so double submits get 409; the client polls the document. Documents left "analyzing" by a server restart are marked failed on startup.
 - Long text is split into ~24k-char overlapping sections (3 in parallel); duplicate risks across sections are merged by title. Progress = chunksDone/chunksTotal.
 - Document text is passed to the model only inside a `<document>` block declared as untrusted data.
-- Each AI risk is saved with its evidence quotes (located in the stored text → verified + offsets + PDF page, otherwise unverified), one mitigation action, and one `initial` assessment, in a single transaction. Re-analysis needs `replaceExisting: true` and replaces old risks only if the new run succeeds.
+- Every run is saved in one transaction; a failed run changes nothing but the run/document status. Each run is recorded in `analysis_runs` (counts of new / matched / not-detected risks).
+- Evidence verification is deterministic and only against the stored text: exact match first, then a normalized match (whitespace / typographic quotes / dashes only, never wording). Each evidence row keeps the AI's `claimedQuote`, the exact source slice as `quote`, `matchType`, the `normalizations` actually needed, and `matchCount` (>1 = ambiguous location). Unfound quotes are stored with `verified=false` and null offsets.
+- Risk `evidenceStatus`, `reviewRequired` and `reviewReasons` are computed by the server (`lib/evidence-review.ts`), never by the AI. Review is required for: no quotation, any unfound quote, inferred (interpretation) findings, ambiguous quotes, AI-flagged uncertainty, confidence < 0.5, or not detected on re-analysis.
+- Evidence basis: `direct` (quote states the risk), `inferred` (interpretation of several quoted passages, with `interpretationNote`), `none` (no quotable support; kept and flagged, never given an invented quote). The server forces `none` when no quotes are returned.
+- Re-analysis (`rerun: true`) never deletes risks. The model sees the document's existing risks and may set `matchesExistingRiskId`; the server accepts only ids belonging to that document, else falls back to an identical-title match. Matched risks keep id, title and human-set status, update current fields and gain a `reanalysis` assessment; new issues get a new risk + one mitigation action; unmatched existing risks get a `not_detected` assessment and are flagged for review (not resolved).
+- A risk's current evidence = evidence of its latest `identified` assessment (plus manually added evidence with no assessment). Older evidence stays attached to its own assessment and is shown in the history. Dashboard evidence totals count current evidence only.
 - Deleting a document cascades to its risks, evidence, actions and assessments.
 
 ## Product
 
 - Phase 1 (done): data model, dashboard, documents (add by pasted text, view, delete), risk register and risk detail views, live system status (API / DB / AI provider).
 - Phase 2 (done): PDF/DOCX/TXT upload with text extraction, AI risk analysis with verified evidence, progress and errors in the UI.
+- Phase 3 (done): evidence verification detail (match type, normalizations, ambiguity, basis, review reasons), filterable risk register, source document on risk detail, stable ids and preserved history across re-analysis.
 - Later phases: mitigation action management, reassessment with new evidence.
 
 ## User preferences
@@ -66,6 +72,9 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - JSON body limit is 5 MB (large documents are sent as text).
 - Drizzle renders columns unqualified in single-table selects, so correlated `sql` subqueries must use explicit table-qualified names (`"documents"."id"`), not `${table.col}`.
 - `lib/api-zod/tsconfig.json` needs `dom` in `lib` because multipart schemas use `Blob`.
+- Orval generates boolean query params as `z.coerce.boolean()`, which reads "false" as true; parse them explicitly in the route (see `reviewRequired` in routes/risks.ts).
+- Orval generates `allOf` schemas (e.g. RiskDetail, DocumentDetail) as `.and()` intersections, so they have no `.shape`.
+- Status/severity/evidence enums are defined twice (Drizzle constants and OpenAPI); `tests/evidence-verification.test.ts` fails if they drift. The frontend derives its lists from the generated enums.
 - API tests mock only `requestStructuredCompletion`; test fixtures in `artifacts/api-server/tests/fixtures/` contain unique text so duplicate detection never collides with real documents.
 
 ## Pointers

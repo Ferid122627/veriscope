@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { documentsTable } from "./documents";
@@ -7,6 +7,8 @@ import { assessmentsTable } from "./assessments";
 
 // A quote from a source document. `verified` is true only when the quote was
 // located verbatim in the document's stored text; offsets point at that match.
+export const EVIDENCE_MATCH_TYPES = ["exact", "normalized", "not_found"] as const;
+
 export const evidenceTable = pgTable(
   "evidence",
   {
@@ -21,7 +23,15 @@ export const evidenceTable = pgTable(
     assessmentId: integer("assessment_id").references(() => assessmentsTable.id, {
       onDelete: "cascade",
     }),
+    // Source text when located (exact characters from the document); otherwise the AI's claim.
     quote: text("quote").notNull(),
+    // The quotation exactly as the AI returned it, kept for audit.
+    claimedQuote: text("claimed_quote"),
+    matchType: text("match_type", { enum: EVIDENCE_MATCH_TYPES }).notNull().default("not_found"),
+    // Which normalizations were needed to locate a "normalized" match.
+    normalizations: jsonb("normalizations").$type<string[]>().notNull().default([]),
+    // How many places in the document the quotation matches (>1 = ambiguous location).
+    matchCount: integer("match_count").notNull().default(0),
     startOffset: integer("start_offset"),
     endOffset: integer("end_offset"),
     verified: boolean("verified").notNull(),

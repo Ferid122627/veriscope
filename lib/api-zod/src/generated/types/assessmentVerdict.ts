@@ -15,4 +15,5 @@ export const AssessmentVerdict = {
   partially_resolved: 'partially_resolved',
   not_resolved: 'not_resolved',
   insufficient_evidence: 'insufficient_evidence',
+  not_detected: 'not_detected',
 } as const;

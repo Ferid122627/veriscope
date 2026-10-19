@@ -5,9 +5,12 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { AnalysisRun } from './analysisRun';
 import type { Document } from './document';
 
 export type DocumentDetail = Document & ({
+  /** Analysis runs, newest first */
+  analysisRuns: AnalysisRun[];
   content: string;
   /**
      * Character offset where each PDF page starts (index 0 = page 1)

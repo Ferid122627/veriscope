@@ -84,6 +84,20 @@ export const CreateDocumentResponse = zod.object({
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "analysisRuns": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentId": zod.number().int(),
+  "status": zod.enum(['running', 'completed', 'failed']),
+  "model": zod.string(),
+  "chunksTotal": zod.number().int(),
+  "risksIdentified": zod.number().int().nullable(),
+  "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
+  "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
+  "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "error": zod.string().nullable(),
+  "startedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})).describe('Analysis runs, newest first'),
   "content": zod.string(),
   "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
 }))
@@ -119,6 +133,20 @@ export const UploadDocumentResponse = zod.object({
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "analysisRuns": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentId": zod.number().int(),
+  "status": zod.enum(['running', 'completed', 'failed']),
+  "model": zod.string(),
+  "chunksTotal": zod.number().int(),
+  "risksIdentified": zod.number().int().nullable(),
+  "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
+  "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
+  "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "error": zod.string().nullable(),
+  "startedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})).describe('Analysis runs, newest first'),
   "content": zod.string(),
   "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
 }))
@@ -132,7 +160,7 @@ export const AnalyzeDocumentParams = zod.object({
 })
 
 export const AnalyzeDocumentBody = zod.object({
-  "replaceExisting": zod.boolean().optional().describe('Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds')
+  "rerun": zod.boolean().optional().describe('Re-run analysis on an already analyzed document. Findings are matched to existing risks (which keep their IDs and gain a new assessment); nothing is deleted.')
 })
 
 export const AnalyzeDocumentResponse = zod.object({
@@ -180,6 +208,20 @@ export const GetDocumentResponse = zod.object({
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
+  "analysisRuns": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentId": zod.number().int(),
+  "status": zod.enum(['running', 'completed', 'failed']),
+  "model": zod.string(),
+  "chunksTotal": zod.number().int(),
+  "risksIdentified": zod.number().int().nullable(),
+  "risksNew": zod.number().int().nullable().describe('Findings that did not match an existing risk'),
+  "risksMatched": zod.number().int().nullable().describe('Findings matched to an existing risk (same ID kept)'),
+  "risksNotDetected": zod.number().int().nullable().describe('Existing risks this run did not find again (kept, flagged for review)'),
+  "error": zod.string().nullable(),
+  "startedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable()
+})).describe('Analysis runs, newest first'),
   "content": zod.string(),
   "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
 }))
@@ -201,7 +243,9 @@ export const DeleteDocumentResponse = zod.void()
 export const ListRisksQueryParams = zod.object({
   "severity": zod.enum(['low', 'medium', 'high', 'critical']).optional(),
   "status": zod.enum(['open', 'mitigating', 'resolved']).optional(),
-  "documentId": zod.coerce.number().int().optional()
+  "documentId": zod.coerce.number().int().optional(),
+  "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).optional(),
+  "reviewRequired": zod.coerce.boolean().optional()
 })
 
 export const ListRisksResponseItem = zod.object({
@@ -215,8 +259,16 @@ export const ListRisksResponseItem = zod.object({
   "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
   "businessImpact": zod.string().nullable(),
   "reviewNotes": zod.string().nullable().describe('Uncertainty or points a human reviewer should check'),
+  "recommendedMitigation": zod.string().nullable().describe('Latest AI-recommended mitigation'),
+  "evidenceBasis": zod.union([zod.enum(['direct', 'inferred', 'none']).describe('direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support'),zod.null()]),
+  "interpretationNote": zod.string().nullable().describe('Why the risk is an interpretation of several passages rather than a direct quotation'),
+  "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
+  "reviewRequired": zod.boolean(),
+  "reviewReasons": zod.array(zod.string()),
   "status": zod.enum(['open', 'mitigating', 'resolved']),
-  "evidenceCount": zod.number().int(),
+  "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
+  "verifiedEvidenceCount": zod.number().int(),
+  "lastAssessedAt": zod.coerce.date().nullable(),
   "openActionCount": zod.number().int(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -242,24 +294,55 @@ export const GetRiskResponse = zod.object({
   "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
   "businessImpact": zod.string().nullable(),
   "reviewNotes": zod.string().nullable().describe('Uncertainty or points a human reviewer should check'),
+  "recommendedMitigation": zod.string().nullable().describe('Latest AI-recommended mitigation'),
+  "evidenceBasis": zod.union([zod.enum(['direct', 'inferred', 'none']).describe('direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support'),zod.null()]),
+  "interpretationNote": zod.string().nullable().describe('Why the risk is an interpretation of several passages rather than a direct quotation'),
+  "evidenceStatus": zod.enum(['verified', 'partially_verified', 'unverified', 'no_evidence']).describe('Computed by the server from verification against the source text'),
+  "reviewRequired": zod.boolean(),
+  "reviewReasons": zod.array(zod.string()),
   "status": zod.enum(['open', 'mitigating', 'resolved']),
-  "evidenceCount": zod.number().int(),
+  "evidenceCount": zod.number().int().describe('Quotations in the current evidence set'),
+  "verifiedEvidenceCount": zod.number().int(),
+  "lastAssessedAt": zod.coerce.date().nullable(),
   "openActionCount": zod.number().int(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
+  "sourceDocument": zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "filename": zod.string().nullable(),
+  "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
+  "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
+  "riskCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+}),
   "evidence": zod.array(zod.object({
   "id": zod.number().int(),
   "riskId": zod.number().int(),
   "documentId": zod.number().int(),
   "documentTitle": zod.string(),
-  "quote": zod.string(),
+  "assessmentId": zod.number().int().nullable(),
+  "quote": zod.string().describe('Exact source characters when verified; otherwise the unverified claimed text'),
+  "claimedQuote": zod.string().nullable().describe('The quotation exactly as the AI returned it'),
+  "matchType": zod.enum(['exact', 'normalized', 'not_found']),
+  "normalizations": zod.array(zod.string()).describe('Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes)'),
+  "matchCount": zod.number().int().describe('Number of places the quotation occurs in the document; more than 1 means the location is ambiguous'),
   "startOffset": zod.number().int().nullable(),
   "endOffset": zod.number().int().nullable(),
   "pageNumber": zod.number().int().nullable().describe('1-based PDF page containing the quote, when known'),
   "verified": zod.boolean().describe('True only if the quote was found verbatim in the source document text'),
   "createdAt": zod.coerce.date()
-}).describe('A verbatim quote from a source document, located by character offsets')),
+}).describe('A verbatim quote from a source document, located by character offsets')).describe('Current evidence (from the latest assessment that identified the risk)'),
   "actions": zod.array(zod.object({
   "id": zod.number().int(),
   "riskId": zod.number().int(),
@@ -272,12 +355,33 @@ export const GetRiskResponse = zod.object({
   "assessments": zod.array(zod.object({
   "id": zod.number().int(),
   "riskId": zod.number().int(),
-  "kind": zod.enum(['initial', 'reassessment']),
-  "verdict": zod.enum(['identified', 'resolved', 'partially_resolved', 'not_resolved', 'insufficient_evidence']),
+  "kind": zod.enum(['initial', 'reanalysis', 'reassessment']),
+  "verdict": zod.enum(['identified', 'resolved', 'partially_resolved', 'not_resolved', 'insufficient_evidence', 'not_detected']),
   "rationale": zod.string(),
   "confidence": zod.number().nullable(),
   "evidenceDocumentId": zod.number().int().nullable(),
   "model": zod.string().nullable(),
+  "analysisRunId": zod.number().int().nullable(),
+  "severity": zod.union([zod.enum(['low', 'medium', 'high', 'critical']),zod.null()]),
+  "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
+  "evidenceBasis": zod.union([zod.enum(['direct', 'inferred', 'none']).describe('direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support'),zod.null()]),
+  "evidence": zod.array(zod.object({
+  "id": zod.number().int(),
+  "riskId": zod.number().int(),
+  "documentId": zod.number().int(),
+  "documentTitle": zod.string(),
+  "assessmentId": zod.number().int().nullable(),
+  "quote": zod.string().describe('Exact source characters when verified; otherwise the unverified claimed text'),
+  "claimedQuote": zod.string().nullable().describe('The quotation exactly as the AI returned it'),
+  "matchType": zod.enum(['exact', 'normalized', 'not_found']),
+  "normalizations": zod.array(zod.string()).describe('Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes)'),
+  "matchCount": zod.number().int().describe('Number of places the quotation occurs in the document; more than 1 means the location is ambiguous'),
+  "startOffset": zod.number().int().nullable(),
+  "endOffset": zod.number().int().nullable(),
+  "pageNumber": zod.number().int().nullable().describe('1-based PDF page containing the quote, when known'),
+  "verified": zod.boolean().describe('True only if the quote was found verbatim in the source document text'),
+  "createdAt": zod.coerce.date()
+}).describe('A verbatim quote from a source document, located by character offsets')).describe('Quotations cited by this assessment'),
   "createdAt": zod.coerce.date()
 }))
 }))
@@ -303,7 +407,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "openActions": zod.number().int(),
   "totalEvidence": zod.number().int(),
   "verifiedEvidence": zod.number().int(),
-  "totalAssessments": zod.number().int()
+  "totalAssessments": zod.number().int(),
+  "risksRequiringReview": zod.number().int()
 })
 
 

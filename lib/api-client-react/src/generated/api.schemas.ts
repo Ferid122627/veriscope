@@ -55,8 +55,47 @@ export interface DocumentUpload {
 }
 
 export interface AnalyzeRequest {
-  /** Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds */
-  replaceExisting?: boolean;
+  /** Re-run analysis on an already analyzed document. Findings are matched to existing risks (which keep their IDs and gain a new assessment); nothing is deleted. */
+  rerun?: boolean;
+}
+
+export type AnalysisRunStatus = typeof AnalysisRunStatus[keyof typeof AnalysisRunStatus];
+
+
+export const AnalysisRunStatus = {
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface AnalysisRun {
+  id: number;
+  documentId: number;
+  status: AnalysisRunStatus;
+  model: string;
+  chunksTotal: number;
+  /** @nullable */
+  risksIdentified: number | null;
+  /**
+     * Findings that did not match an existing risk
+     * @nullable
+     */
+  risksNew: number | null;
+  /**
+     * Findings matched to an existing risk (same ID kept)
+     * @nullable
+     */
+  risksMatched: number | null;
+  /**
+     * Existing risks this run did not find again (kept, flagged for review)
+     * @nullable
+     */
+  risksNotDetected: number | null;
+  /** @nullable */
+  error: string | null;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
 }
 
 export type DocumentSource = typeof DocumentSource[keyof typeof DocumentSource];
@@ -119,6 +158,8 @@ export interface Document {
 }
 
 export type DocumentDetail = Document & ({
+  /** Analysis runs, newest first */
+  analysisRuns: AnalysisRun[];
   content: string;
   /**
      * Character offset where each PDF page starts (index 0 = page 1)
@@ -166,6 +207,40 @@ export const RiskLikelihood = {
   high: 'high',
 } as const;
 
+/**
+ * direct = supported by quotation; inferred = interpretation of several passages; none = no quotable support
+ */
+export type EvidenceBasis = typeof EvidenceBasis[keyof typeof EvidenceBasis];
+
+
+export const EvidenceBasis = {
+  direct: 'direct',
+  inferred: 'inferred',
+  none: 'none',
+} as const;
+
+/**
+ * Computed by the server from verification against the source text
+ */
+export type EvidenceStatus = typeof EvidenceStatus[keyof typeof EvidenceStatus];
+
+
+export const EvidenceStatus = {
+  verified: 'verified',
+  partially_verified: 'partially_verified',
+  unverified: 'unverified',
+  no_evidence: 'no_evidence',
+} as const;
+
+export type EvidenceMatchType = typeof EvidenceMatchType[keyof typeof EvidenceMatchType];
+
+
+export const EvidenceMatchType = {
+  exact: 'exact',
+  normalized: 'normalized',
+  not_found: 'not_found',
+} as const;
+
 export interface Risk {
   id: number;
   documentId: number;
@@ -182,8 +257,26 @@ export interface Risk {
      * @nullable
      */
   reviewNotes: string | null;
+  /**
+     * Latest AI-recommended mitigation
+     * @nullable
+     */
+  recommendedMitigation: string | null;
+  evidenceBasis: EvidenceBasis | null;
+  /**
+     * Why the risk is an interpretation of several passages rather than a direct quotation
+     * @nullable
+     */
+  interpretationNote: string | null;
+  evidenceStatus: EvidenceStatus;
+  reviewRequired: boolean;
+  reviewReasons: string[];
   status: RiskStatus;
+  /** Quotations in the current evidence set */
   evidenceCount: number;
+  verifiedEvidenceCount: number;
+  /** @nullable */
+  lastAssessedAt: string | null;
   openActionCount: number;
   createdAt: string;
   updatedAt: string;
@@ -197,7 +290,20 @@ export interface Evidence {
   riskId: number;
   documentId: number;
   documentTitle: string;
+  /** @nullable */
+  assessmentId: number | null;
+  /** Exact source characters when verified; otherwise the unverified claimed text */
   quote: string;
+  /**
+     * The quotation exactly as the AI returned it
+     * @nullable
+     */
+  claimedQuote: string | null;
+  matchType: EvidenceMatchType;
+  /** Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes) */
+  normalizations: string[];
+  /** Number of places the quotation occurs in the document; more than 1 means the location is ambiguous */
+  matchCount: number;
   /** @nullable */
   startOffset: number | null;
   /** @nullable */
@@ -245,6 +351,7 @@ export const AssessmentVerdict = {
   partially_resolved: 'partially_resolved',
   not_resolved: 'not_resolved',
   insufficient_evidence: 'insufficient_evidence',
+  not_detected: 'not_detected',
 } as const;
 
 export type AssessmentKind = typeof AssessmentKind[keyof typeof AssessmentKind];
@@ -252,6 +359,7 @@ export type AssessmentKind = typeof AssessmentKind[keyof typeof AssessmentKind];
 
 export const AssessmentKind = {
   initial: 'initial',
+  reanalysis: 'reanalysis',
   reassessment: 'reassessment',
 } as const;
 
@@ -267,10 +375,19 @@ export interface Assessment {
   evidenceDocumentId: number | null;
   /** @nullable */
   model: string | null;
+  /** @nullable */
+  analysisRunId: number | null;
+  severity: RiskSeverity | null;
+  likelihood: RiskLikelihood | null;
+  evidenceBasis: EvidenceBasis | null;
+  /** Quotations cited by this assessment */
+  evidence: Evidence[];
   createdAt: string;
 }
 
 export type RiskDetail = Risk & {
+  sourceDocument: Document;
+  /** Current evidence (from the latest assessment that identified the risk) */
   evidence: Evidence[];
   actions: MitigationAction[];
   assessments: Assessment[];
@@ -298,6 +415,7 @@ export interface DashboardSummary {
   totalEvidence: number;
   verifiedEvidence: number;
   totalAssessments: number;
+  risksRequiringReview: number;
 }
 
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];
@@ -324,5 +442,7 @@ export type ListRisksParams = {
 severity?: RiskSeverity;
 status?: RiskStatus;
 documentId?: number;
+evidenceStatus?: EvidenceStatus;
+reviewRequired?: boolean;
 };
 

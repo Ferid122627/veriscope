@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Router, type IRouter, type RequestHandler } from "express";
 import multer from "multer";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, documentsTable, risksTable, type DocumentRow } from "@workspace/db";
+import { db, documentsTable, risksTable, analysisRunsTable, type DocumentRow } from "@workspace/db";
 import {
   AnalyzeDocumentBody,
   AnalyzeDocumentParams,
@@ -23,43 +23,17 @@ import {
   type ExtractedDocument,
 } from "../lib/text-extraction";
 import { startAnalysis } from "../lib/analysis-runner";
+import { documentSummaryColumns, toDocumentSummary } from "../lib/document-summary";
 
 const router: IRouter = Router();
 
-// Table-qualified on purpose: Drizzle renders columns unqualified in
-// single-table selects, which would bind "id" to risks.id inside the subquery.
-const riskCount = sql<number>`(
-  select count(*)::int from risks r where r.document_id = "documents"."id"
-)`;
-
-function toSummary(row: Omit<DocumentRow, "content" | "contentHash"> & { riskCount: number }) {
-  const { pageOffsets, ...rest } = row;
-  return { ...rest, pageCount: pageOffsets ? pageOffsets.length : null };
-}
+const toSummary = toDocumentSummary;
+const selectSummary = documentSummaryColumns;
 
 function toDetail(row: DocumentRow & { riskCount: number }) {
   const { content, contentHash: _hash, ...summary } = row;
-  return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null };
+  return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns: [] };
 }
-
-const selectSummary = {
-  id: documentsTable.id,
-  title: documentsTable.title,
-  filename: documentsTable.filename,
-  charCount: documentsTable.charCount,
-  sourceType: documentsTable.sourceType,
-  fileSize: documentsTable.fileSize,
-  pageOffsets: documentsTable.pageOffsets,
-  status: documentsTable.status,
-  analysisError: documentsTable.analysisError,
-  analysisModel: documentsTable.analysisModel,
-  chunksTotal: documentsTable.chunksTotal,
-  chunksDone: documentsTable.chunksDone,
-  analysisStartedAt: documentsTable.analysisStartedAt,
-  analyzedAt: documentsTable.analyzedAt,
-  createdAt: documentsTable.createdAt,
-  riskCount,
-};
 
 function hashContent(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
@@ -221,7 +195,7 @@ router.post("/documents/:id/analyze", async (req, res) => {
     res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid input" });
     return;
   }
-  const result = await startAnalysis(params.data.id, body.data.replaceExisting ?? false, req.log);
+  const result = await startAnalysis(params.data.id, body.data.rerun ?? false, req.log);
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });
     return;
@@ -248,8 +222,15 @@ router.get("/documents/:id", async (req, res) => {
     res.status(404).json({ error: "Document not found" });
     return;
   }
+  const analysisRuns = await db
+    .select()
+    .from(analysisRunsTable)
+    .where(eq(analysisRunsTable.documentId, row.id))
+    .orderBy(desc(analysisRunsTable.startedAt), desc(analysisRunsTable.id));
   const { content, ...summary } = row;
-  res.json(GetDocumentResponse.parse({ ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null }));
+  res.json(
+    GetDocumentResponse.parse({ ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null, analysisRuns }),
+  );
 });
 
 router.delete("/documents/:id", async (req, res) => {

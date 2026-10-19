@@ -28,10 +28,10 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
     return () => clearInterval(t);
   }, [doc.status]);
 
-  const run = (replaceExisting: boolean) => {
+  const run = (rerun: boolean) => {
     if (analyze.isPending) return;
     setErr(null);
-    analyze.mutate({ id: doc.id, data: replaceExisting ? { replaceExisting: true } : {} }, {
+    analyze.mutate({ id: doc.id, data: rerun ? { rerun: true } : {} }, {
       onSuccess: (d) => { qc.setQueryData(getGetDocumentQueryKey(doc.id), (old: Doc | undefined) => (old ? { ...old, ...d } : old)); qc.invalidateQueries({ queryKey: getGetDocumentQueryKey(doc.id) }); setConfirm(false); },
       onError: (e) => { setErr(apiErrorMessage(e)); setConfirm(false); },
     });
@@ -59,6 +59,7 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
     body = (
       <div>
         <div className="text-sm" data-testid="text-analysis-summary">Analyzed {doc.analyzedAt ? ago(doc.analyzedAt) : ""}{doc.analysisModel && <> · model <span className="font-mono text-xs">{doc.analysisModel}</span></>} · {riskCount} risks</div>
+        {riskCount === 0 && <p className="mt-2 rounded-sm border border-border bg-muted/50 px-3 py-2 text-[13px]" data-testid="text-no-risks-found">Analysis complete — no clear risks were identified in this document.</p>}
         <button className={`${btnGhost} mt-3 w-full`} disabled={busy} onClick={() => setConfirm(true)} data-testid="button-rerun-analysis"><RotateCw className="size-3.5" /> Re-run analysis</button>
       </div>
     );
@@ -83,12 +84,30 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
   return (
     <Panel title="Analysis" aside={<DocStatus status={doc.status} />}>
       {body}
+      {doc.analysisRuns.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Analysis history</div>
+          <ol className="space-y-2.5">
+            {doc.analysisRuns.map((r) => (
+              <li key={r.id} className="text-[12px]" data-testid={`item-run-${r.id}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono">Run #{r.id}</span>
+                  <Chip className={r.status === "failed" ? "border-destructive/50 text-destructive" : r.status === "running" ? "border-[hsl(230_38%_40%/0.4)] text-[hsl(230_38%_35%)]" : "border-[hsl(150_35%_35%/0.4)] text-[hsl(150_40%_26%)]"}>{r.status}</Chip>
+                </div>
+                <div className="font-mono text-[10.5px] text-muted-foreground">{stamp(r.startedAt)}{r.finishedAt && ` → ${stamp(r.finishedAt)}`} · {r.model}</div>
+                {r.status === "failed" ? <div className="mt-0.5 break-words text-destructive">{r.error ?? "Failed without a reported reason."}</div>
+                  : r.status === "completed" && <div className="mt-0.5 tabular">{r.risksIdentified ?? 0} identified · {r.risksNew ?? 0} new · {r.risksMatched ?? 0} matched · {r.risksNotDetected ?? 0} not detected</div>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {err && <div data-testid="text-analyze-error" className="mt-3 rounded-sm border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{err}</div>}
       <AlertDialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-serif text-xl font-normal">Re-run analysis?</AlertDialogTitle>
-            <AlertDialogDescription>The previous risks, mitigation actions and assessments for this document are replaced only if the new run succeeds. If it fails, the current results are kept.</AlertDialogDescription>
+            <AlertDialogDescription>Nothing is deleted. Findings that match existing risks keep their IDs and get a new re-analysis assessment appended to their history. New issues become new risks. Existing risks not found again are kept, marked "not detected", and flagged for human review.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-rerun">Cancel</AlertDialogCancel>
@@ -212,7 +231,7 @@ export default function DocumentDetail() {
           <Panel title="Risks from this document" aside={risks.data && <span className="font-mono text-[11px]">{risks.data.length}</span>} bodyClass="p-0 max-h-[55vh] overflow-auto">
             {risks.isError ? <div className="p-4"><ErrorState error={risks.error} onRetry={() => risks.refetch()} /></div>
               : risks.isLoading ? <div className="space-y-3 p-4">{[0, 1, 2].map((i) => <Skel key={i} className="h-10" />)}</div>
-              : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks identified" body={d?.status === "analyzing" ? "Analysis is in progress. Risks will appear here when it completes." : "This document has not produced any risks yet. Risks appear here once analysis has run."} />
+              : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks identified" body={d?.status === "analyzed" ? "Analysis complete — no clear risks were identified in this document." : d?.status === "analyzing" ? "Analysis is in progress. Risks will appear here when it completes." : "This document has not produced any risks yet. Risks appear here once analysis has run."} />
               : risks.data.map((r) => (
                 <Link key={r.id} href={`/risks/${r.id}`} data-testid={`link-risk-${r.id}`} className="block border-b border-border px-4 py-3 last:border-0 hover:bg-muted/50">
                   <div className="flex items-center gap-2"><SeverityChip severity={r.severity} /><StatusChip status={r.status} /></div>

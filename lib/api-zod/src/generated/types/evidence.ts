@@ -5,6 +5,7 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { EvidenceMatchType } from './evidenceMatchType';
 
 /**
  * A verbatim quote from a source document, located by character offsets
@@ -14,7 +15,20 @@ export interface Evidence {
   riskId: number;
   documentId: number;
   documentTitle: string;
+  /** @nullable */
+  assessmentId: number | null;
+  /** Exact source characters when verified; otherwise the unverified claimed text */
   quote: string;
+  /**
+     * The quotation exactly as the AI returned it
+     * @nullable
+     */
+  claimedQuote: string | null;
+  matchType: EvidenceMatchType;
+  /** Normalizations needed to locate a "normalized" match (e.g. whitespace, quotes, dashes) */
+  normalizations: string[];
+  /** Number of places the quotation occurs in the document; more than 1 means the location is ambiguous */
+  matchCount: number;
   /** @nullable */
   startOffset: number | null;
   /** @nullable */

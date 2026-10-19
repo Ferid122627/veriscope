@@ -1,0 +1,50 @@
+# VERISCOPE — PHASE 3: EVIDENCE VERIFICATION AND RISK REGISTER
+
+Continue from the existing Veriscope implementation. Preserve working functionality and the current stack.
+
+## Objective
+Make risk findings traceable to the original document. A reviewer must be able to understand exactly why a risk was identified and whether its evidence has been verified.
+
+## Evidence verification
+For every AI-generated risk:
+1. Keep the original source document and its extracted text associated with the finding.
+2. Validate every quoted excerpt against the actual extracted source text.
+3. Use exact matching first. If normalization is necessary, preserve the original text and document how it was normalized.
+4. Track the source location when available, such as page number or section.
+5. Distinguish verified quotations, unverified quotations, and findings that have no direct supporting quotation.
+6. Never label an unverified quotation as verified.
+7. If a risk is inferred from several passages, show those passages and explain that the risk is an interpretation, not a direct quotation.
+8. If evidence is missing or ambiguous, require human review rather than inventing evidence.
+
+Do not use another LLM response as proof that a quotation is real. Verification must be performed against the original extracted text.
+
+## Risk register
+Implement or improve the existing risk register with:
+- Risk ID and title.
+- Category, severity, and likelihood.
+- Business impact.
+- Source document and supporting evidence.
+- Evidence verification status.
+- Recommended mitigation.
+- Current risk status.
+- Assessment timestamp.
+
+Add useful filtering by severity, status, and document. Ensure clicking a risk opens its details.
+
+## Data integrity
+- Persist the results.
+- Keep stable identifiers for documents and risks.
+- Avoid duplicate risks when the same document is reanalyzed.
+- Preserve earlier assessments rather than silently overwriting historical results.
+- Use consistent status and severity values across backend and frontend.
+
+## Tests
+Verify:
+1. A real quotation present in the source.
+2. A fabricated quotation absent from the source.
+3. A risk supported by multiple excerpts.
+4. A finding with insufficient evidence.
+5. A document with no clear risks.
+6. A risk detail page that displays the correct source document.
+
+Use automated tests where practical. Do not hardcode sample findings into production UI. Demo fixtures must be clearly separated from actual analysis results.
