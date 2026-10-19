@@ -49,7 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <header className="sticky top-0 z-20 bg-sidebar text-sidebar-foreground shadow-sm">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 md:px-8">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 md:px-6">
           <Link href="/" data-testid="link-home" className="flex items-center gap-2.5 py-1">
             <Mark className="size-9" />
             <span className="text-[15px] font-semibold tracking-[0.14em] text-white">VERISCOPE</span>
