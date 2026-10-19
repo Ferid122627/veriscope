@@ -1,0 +1,100 @@
+Before I send prompts 5 (Security + End-to-End Verification) and 6 (UI Polish + Hackathon Demo), I want you to perform a complete preflight assessment of the current Veriscope project.
+
+**Important: This is an inspection-only task. Do not modify application code, install skills, commit, push, reset Git, change branches, or perform destructive database operations. Preserve all existing work.**
+
+## 1. Git state and preservation
+- Inspect the current branch, working tree, recent commits, configured remote, and differences between the local branch and its remote.
+- Determine whether the work from prompts 1–4 is committed and pushed.
+- Identify uncommitted changes, unpushed commits, untracked files, stashes, and relevant ignored files.
+- Check whether `.env` files, API keys, credentials, or other secrets could be exposed in Git.
+- Report whether it is safe to proceed and recommend a backup or commit if necessary.
+- Never assume the repository is clean without checking it.
+
+## 2. Implementation status after prompts 1–4
+Inspect the actual code and classify each feature as:
+- Implemented and verified
+- Implemented but unverified
+- Partially implemented
+- Missing
+- Broken or blocked
+
+Assess these features:
+- Document upload and file validation
+- PDF/DOCX text extraction, where supported
+- Real LLM integration and structured risk analysis
+- Evidence excerpts verified against the original extracted document text
+- Risk register, severity, filters, and status management
+- Persistent database storage
+- Mitigation actions, owners, and due dates
+- New evidence upload and risk reassessment
+- Reassessment history
+- Human approval before final risk closure
+- Error handling and loading states
+
+For each important finding, provide relevant file paths, functions, API endpoints, or test references. Do not treat the existence of a UI component as proof that the underlying feature works.
+
+## 3. AI configuration
+- Identify the actual LLM provider and integration implemented in the code.
+- Identify required environment variable names without displaying their values.
+- Check whether the necessary configuration appears to be available, without revealing secrets.
+- Determine whether real AI analysis can be tested in the current environment.
+- Clearly distinguish real AI output from mocks, fixtures, or hardcoded examples.
+- Do not call external AI services or send documents anywhere during this preflight unless necessary and explicitly approved.
+
+## 4. Database and data integrity
+- Identify the actual database, ORM if any, migration system, and storage locations.
+- Check whether database configuration and required migrations appear correct.
+- Review whether uploaded documents, risks, mitigation actions, and assessment history are persisted.
+- Identify potential data-loss risks.
+- Do not reset, reseed, delete, or modify any database.
+
+## 5. Existing tests and application health
+- Inspect the project's package scripts and available test suites before running commands.
+- Run only safe, non-destructive checks that do not alter project files or data.
+- Report the exact commands executed and their actual results.
+- Identify existing test coverage for the critical workflow.
+- State whether the application can currently build and whether the main workflow has been verified end to end.
+- If a check cannot be run because of missing dependencies, environment variables, database access, or another blocker, explain why.
+
+## 6. Security readiness
+Perform a read-only review of:
+- Upload validation and file handling
+- Authentication and authorization
+- API input validation
+- Secret handling
+- Prompt-injection defenses for uploaded documents
+- Evidence verification logic
+- Database query safety
+- Human approval and risk-closure enforcement
+
+Report confirmed vulnerabilities separately from potential risks that require further testing.
+
+## 7. ECC skills and instructions
+- Inspect the existing `.agents` and `.claude` directories and project instructions.
+- Determine which relevant ECC skills are already installed and discoverable.
+- Do not install or overwrite anything during this task.
+- Identify any useful skills that are missing and explain how they would help with the next stages.
+
+## 8. Final decision report
+Provide a concise but evidence-based report with these sections:
+
+A. Git and backup status  
+B. Implementation status for prompts 1–4  
+C. Database and AI integration readiness  
+D. Test and build results  
+E. Security concerns  
+F. ECC skill status  
+G. Blockers that must be resolved before prompt 5  
+H. Recommended next steps, in priority order  
+
+For each finding, distinguish verified facts from assumptions. Include file paths and test results where possible.
+
+Finally, answer these questions explicitly:
+
+1. Is it safe to proceed with prompt 5 now? Why or why not?
+2. What must be fixed or backed up first?
+3. Is prompt 6 safe to run after prompt 5, or are there prerequisites?
+4. What are the three highest-priority actions?
+5. What is the smallest reliable plan to get Veriscope ready for a live hackathon demo?
+
+**Stop after producing this report. Wait for my approval before installing skills or changing application code.**
