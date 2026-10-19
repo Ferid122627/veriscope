@@ -1,1 +1,2 @@
+- [Package firewall 403s](package-firewall.md) — CVE-flagged package versions are blocked at install; pin the patched version via pnpm overrides.
 - [Stack & delivery decisions](stack-decisions.md) — Postgres+Drizzle over SQLite/Prisma, OpenAI via lazy SDK client, the 10 ECC skills, phase briefs
