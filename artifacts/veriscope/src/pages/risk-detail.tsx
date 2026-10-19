@@ -204,7 +204,7 @@ export default function RiskDetail() {
             </section>
           </div>
 
-          <aside className="order-1 space-y-6 self-start lg:sticky lg:top-6 lg:order-2" aria-label="Progress">
+          <aside className="order-1 space-y-6 self-start lg:sticky lg:top-[88px] lg:order-2" aria-label="Progress">
             <ClosureProgress risk={r} />
           </aside>
         </div>
