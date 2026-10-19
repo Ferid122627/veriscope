@@ -5,6 +5,7 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { RiskLikelihood } from './riskLikelihood';
 import type { RiskSeverity } from './riskSeverity';
 import type { RiskStatus } from './riskStatus';
 
@@ -16,6 +17,14 @@ export interface Risk {
   description: string;
   category: string;
   severity: RiskSeverity;
+  likelihood: RiskLikelihood | null;
+  /** @nullable */
+  businessImpact: string | null;
+  /**
+     * Uncertainty or points a human reviewer should check
+     * @nullable
+     */
+  reviewNotes: string | null;
   status: RiskStatus;
   evidenceCount: number;
   openActionCount: number;

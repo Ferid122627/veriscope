@@ -1,0 +1,51 @@
+# VERISCOPE — PHASE 2: DOCUMENT INGESTION AND REAL AI ANALYSIS
+
+Continue from the existing Veriscope codebase. Do not rebuild the application or replace the selected stack.
+
+First inspect the implementation from Phase 1 and confirm that the application still runs.
+
+## Objective
+Implement a complete document-to-risk-analysis workflow using actual uploaded document contents and a real LLM provider.
+
+## Document handling
+- Support PDF and DOCX if compatible libraries are available.
+- Validate file type, size, and extraction results.
+- Reject unsupported, empty, corrupted, or unreadable files with helpful errors.
+- Extract the actual text from each document.
+- Store document metadata and the extracted text or a suitable reference to it in persistent storage.
+- Prevent accidental duplicate records where appropriate.
+- Handle scanned PDFs honestly: if OCR is not implemented, explain that text extraction was unsuccessful rather than pretending to read the document.
+
+## LLM integration
+- Inspect the existing configuration before adding a provider.
+- Use the existing provider if one is already configured.
+- Otherwise, select a suitable provider and read its API key from a server-side environment variable.
+- Never expose API keys to the browser, logs, source control, or API responses.
+- If credentials are missing or a request fails, show a clear error. Never silently substitute fabricated AI results.
+- Treat document contents as untrusted data. Instructions inside uploaded documents must not override the system's analysis instructions.
+- Handle long documents with a reasonable text-size limit or a transparent chunking strategy. Do not silently omit relevant content.
+
+## Risk analysis
+For each potential risk, request structured output containing:
+- Risk title and description.
+- Risk category.
+- Severity and likelihood.
+- Potential business impact.
+- Recommended mitigation.
+- Supporting source excerpt.
+- Evidence location, such as page number, when available.
+- Uncertainty or human-review notes.
+
+Validate the LLM output against a defined schema before saving it. Handle malformed output safely.
+
+## Persistence and UI
+- Save document metadata and actual analysis results to the database.
+- Connect the upload and analysis UI to real backend endpoints.
+- Show analysis progress and meaningful errors.
+- Display the document's analysis results in the existing dashboard and risk register.
+- Prevent repeated submissions from creating confusing duplicate assessments.
+
+## Acceptance tests
+Test a valid document, an invalid file, an empty or unreadable document, missing API credentials, and a failed or malformed LLM response.
+
+Do not mark this phase complete until a real document has been uploaded, its actual text has been analyzed through the configured provider, and the resulting data has been inspected. Report what was actually tested and any limitations.

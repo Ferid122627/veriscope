@@ -7,3 +7,5 @@ description: Why Postgres+Drizzle (not SQLite+Prisma), which ECC skills are inst
   **How to apply:** don't add Prisma or SQLite. The user's rule: use `prisma-patterns` only if Prisma is actually selected; otherwise use the matching database skill (currently `postgres-patterns`).
 - Exactly 10 ECC skills (affaan-m/ECC) live in `.agents/skills/` by the user's choice. ECC has no `database-design` or `code-review` skill; `coding-standards` stands in for code review.
 - The user sends work as numbered phase briefs (attached .txt). Stay within each phase's scope; they want verified results reported (files changed, commands run, actual test output, blockers) and nothing fabricated.
+- AI provider: Replit AI Integrations (OpenAI) through the plain `openai` SDK with a lazily created client, not the skill's template package.
+  **Why:** the template client throws at import time without env vars (the user requires a clear "missing credentials" error), and it brings chat/voice tables and packages this app does not need ("avoid unnecessary dependencies").

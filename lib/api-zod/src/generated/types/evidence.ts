@@ -19,6 +19,11 @@ export interface Evidence {
   startOffset: number | null;
   /** @nullable */
   endOffset: number | null;
+  /**
+     * 1-based PDF page containing the quote, when known
+     * @nullable
+     */
+  pageNumber: number | null;
   /** True only if the quote was found verbatim in the source document text */
   verified: boolean;
   createdAt: Date;

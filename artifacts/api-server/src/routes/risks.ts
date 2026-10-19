@@ -25,16 +25,19 @@ const riskColumns = {
   description: risksTable.description,
   category: risksTable.category,
   severity: risksTable.severity,
+  likelihood: risksTable.likelihood,
+  businessImpact: risksTable.businessImpact,
+  reviewNotes: risksTable.reviewNotes,
   status: risksTable.status,
   createdAt: risksTable.createdAt,
   updatedAt: risksTable.updatedAt,
+  // Table-qualified so the correlation never binds to the subquery's own table.
   evidenceCount: sql<number>`(
-    select count(*)::int from ${evidenceTable} where ${evidenceTable.riskId} = ${risksTable.id}
+    select count(*)::int from evidence e where e.risk_id = "risks"."id"
   )`,
   openActionCount: sql<number>`(
-    select count(*)::int from ${mitigationActionsTable}
-    where ${mitigationActionsTable.riskId} = ${risksTable.id}
-      and ${mitigationActionsTable.status} <> 'done'
+    select count(*)::int from mitigation_actions m
+    where m.risk_id = "risks"."id" and m.status <> 'done'
   )`,
 };
 
@@ -91,6 +94,7 @@ router.get("/risks/:id", async (req, res) => {
         startOffset: evidenceTable.startOffset,
         endOffset: evidenceTable.endOffset,
         verified: evidenceTable.verified,
+        pageNumber: evidenceTable.pageNumber,
         createdAt: evidenceTable.createdAt,
       })
       .from(evidenceTable)

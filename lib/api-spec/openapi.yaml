@@ -79,6 +79,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A document with identical text already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateDocumentError"
+  /documents/upload:
+    post:
+      operationId: uploadDocument
+      tags: [documents]
+      summary: Upload a PDF, DOCX or TXT file and extract its text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentUpload"
+      responses:
+        "201":
+          description: Created with extracted text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "400":
+          description: Missing file or invalid title
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A document with identical text already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateDocumentError"
+        "413":
+          description: File or extracted text too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: File is corrupted, empty or has no extractable text (e.g. scanned PDF)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /documents/{id}/analyze:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: analyzeDocument
+      tags: [documents]
+      summary: Start AI risk analysis of the document's text (runs in the background; poll the document for status)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "202":
+          description: Analysis started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already analyzing, or already analyzed and replaceExisting was not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /documents/{id}:
     parameters:
       - name: id
@@ -227,12 +323,40 @@ components:
         checkedAt:
           type: string
           format: date-time
+    DuplicateDocumentError:
+      type: object
+      required: [error, existingDocumentId]
+      properties:
+        error:
+          type: string
+        existingDocumentId:
+          type: integer
+    DocumentUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        title:
+          type: string
+          maxLength: 200
+    AnalyzeRequest:
+      type: object
+      properties:
+        replaceExisting:
+          type: boolean
+          description: Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds
+    DocumentSource:
+      type: string
+      enum: [text, pdf, docx]
     DocumentStatus:
       type: string
       enum: [uploaded, analyzing, analyzed, failed]
     Document:
       type: object
-      required: [id, title, filename, charCount, status, riskCount, createdAt]
+      required:
+        [id, title, filename, charCount, sourceType, fileSize, pageCount, status, analysisError, analysisModel, chunksTotal, chunksDone, analysisStartedAt, analyzedAt, riskCount, createdAt]
       properties:
         id:
           type: integer
@@ -242,8 +366,32 @@ components:
           type: ["string", "null"]
         charCount:
           type: integer
+        sourceType:
+          $ref: "#/components/schemas/DocumentSource"
+        fileSize:
+          type: ["integer", "null"]
+          description: Original file size in bytes (null for pasted text)
+        pageCount:
+          type: ["integer", "null"]
+          description: Number of pages (PDF only)
         status:
           $ref: "#/components/schemas/DocumentStatus"
+        analysisError:
+          type: ["string", "null"]
+          description: Why the last analysis failed
+        analysisModel:
+          type: ["string", "null"]
+        chunksTotal:
+          type: ["integer", "null"]
+          description: Number of text sections sent to the AI in the current/last analysis
+        chunksDone:
+          type: ["integer", "null"]
+        analysisStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        analyzedAt:
+          type: ["string", "null"]
+          format: date-time
         riskCount:
           type: integer
         createdAt:
@@ -253,10 +401,15 @@ components:
       allOf:
         - $ref: "#/components/schemas/Document"
         - type: object
-          required: [content]
+          required: [content, pageOffsets]
           properties:
             content:
               type: string
+            pageOffsets:
+              type: ["array", "null"]
+              description: Character offset where each PDF page starts (index 0 = page 1)
+              items:
+                type: integer
     DocumentInput:
       type: object
       required: [title, content]
@@ -276,10 +429,13 @@ components:
     RiskStatus:
       type: string
       enum: [open, mitigating, resolved]
+    RiskLikelihood:
+      type: string
+      enum: [low, medium, high]
     Risk:
       type: object
       required:
-        [id, documentId, documentTitle, title, description, category, severity, status, evidenceCount, openActionCount, createdAt, updatedAt]
+        [id, documentId, documentTitle, title, description, category, severity, likelihood, businessImpact, reviewNotes, status, evidenceCount, openActionCount, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -295,6 +451,15 @@ components:
           type: string
         severity:
           $ref: "#/components/schemas/RiskSeverity"
+        likelihood:
+          oneOf:
+            - $ref: "#/components/schemas/RiskLikelihood"
+            - type: "null"
+        businessImpact:
+          type: ["string", "null"]
+        reviewNotes:
+          type: ["string", "null"]
+          description: Uncertainty or points a human reviewer should check
         status:
           $ref: "#/components/schemas/RiskStatus"
         evidenceCount:
@@ -310,7 +475,7 @@ components:
     Evidence:
       type: object
       description: A verbatim quote from a source document, located by character offsets
-      required: [id, riskId, documentId, documentTitle, quote, startOffset, endOffset, verified, createdAt]
+      required: [id, riskId, documentId, documentTitle, quote, startOffset, endOffset, pageNumber, verified, createdAt]
       properties:
         id:
           type: integer
@@ -326,6 +491,9 @@ components:
           type: ["integer", "null"]
         endOffset:
           type: ["integer", "null"]
+        pageNumber:
+          type: ["integer", "null"]
+          description: 1-based PDF page containing the quote, when known
         verified:
           type: boolean
           description: True only if the quote was found verbatim in the source document text

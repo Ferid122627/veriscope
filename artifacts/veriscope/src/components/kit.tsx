@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { formatDistanceToNowStrict, format } from "date-fns";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, RotateCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
@@ -115,3 +115,20 @@ export function ErrorState({ error, onRetry, title = "Could not load this data",
 export const btn = "inline-flex items-center justify-center gap-2 rounded-sm px-3 h-8 text-[13px] font-medium transition-[transform,background-color] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
 export const btnPrimary = cn(btn, "bg-primary text-primary-foreground hover:bg-primary/90");
 export const btnGhost = cn(btn, "border border-border bg-card hover:bg-muted");
+
+export function DocStatus({ status }: { status: string }) {
+  if (status === "analyzing") return <Chip testId="status-document" className="border-[hsl(230_38%_40%/0.4)] text-[hsl(230_38%_35%)]"><Loader2 className="size-3 animate-spin" />analyzing</Chip>;
+  if (status === "failed") return <Chip testId="status-document" className="border-destructive/50 bg-destructive/10 text-destructive">failed</Chip>;
+  return <StatusChip status={status} testId="status-document" />;
+}
+
+export function fmtBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+export function existingDocId(err: unknown): number | null {
+  const v = (err as { data?: { existingDocumentId?: number } } | null)?.data?.existingDocumentId;
+  return typeof v === "number" ? v : null;
+}

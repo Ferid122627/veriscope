@@ -43,6 +43,31 @@ export interface SystemStatus {
   checkedAt: string;
 }
 
+export interface DuplicateDocumentError {
+  error: string;
+  existingDocumentId: number;
+}
+
+export interface DocumentUpload {
+  file: Blob;
+  /** @maxLength 200 */
+  title?: string;
+}
+
+export interface AnalyzeRequest {
+  /** Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds */
+  replaceExisting?: boolean;
+}
+
+export type DocumentSource = typeof DocumentSource[keyof typeof DocumentSource];
+
+
+export const DocumentSource = {
+  text: 'text',
+  pdf: 'pdf',
+  docx: 'docx',
+} as const;
+
 export type DocumentStatus = typeof DocumentStatus[keyof typeof DocumentStatus];
 
 
@@ -59,14 +84,48 @@ export interface Document {
   /** @nullable */
   filename: string | null;
   charCount: number;
+  sourceType: DocumentSource;
+  /**
+     * Original file size in bytes (null for pasted text)
+     * @nullable
+     */
+  fileSize: number | null;
+  /**
+     * Number of pages (PDF only)
+     * @nullable
+     */
+  pageCount: number | null;
   status: DocumentStatus;
+  /**
+     * Why the last analysis failed
+     * @nullable
+     */
+  analysisError: string | null;
+  /** @nullable */
+  analysisModel: string | null;
+  /**
+     * Number of text sections sent to the AI in the current/last analysis
+     * @nullable
+     */
+  chunksTotal: number | null;
+  /** @nullable */
+  chunksDone: number | null;
+  /** @nullable */
+  analysisStartedAt: string | null;
+  /** @nullable */
+  analyzedAt: string | null;
   riskCount: number;
   createdAt: string;
 }
 
-export type DocumentDetail = Document & {
+export type DocumentDetail = Document & ({
   content: string;
-};
+  /**
+     * Character offset where each PDF page starts (index 0 = page 1)
+     * @nullable
+     */
+  pageOffsets: number[] | null;
+});
 
 export interface DocumentInput {
   /**
@@ -98,6 +157,15 @@ export const RiskStatus = {
   resolved: 'resolved',
 } as const;
 
+export type RiskLikelihood = typeof RiskLikelihood[keyof typeof RiskLikelihood];
+
+
+export const RiskLikelihood = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
 export interface Risk {
   id: number;
   documentId: number;
@@ -106,6 +174,14 @@ export interface Risk {
   description: string;
   category: string;
   severity: RiskSeverity;
+  likelihood: RiskLikelihood | null;
+  /** @nullable */
+  businessImpact: string | null;
+  /**
+     * Uncertainty or points a human reviewer should check
+     * @nullable
+     */
+  reviewNotes: string | null;
   status: RiskStatus;
   evidenceCount: number;
   openActionCount: number;
@@ -126,6 +202,11 @@ export interface Evidence {
   startOffset: number | null;
   /** @nullable */
   endOffset: number | null;
+  /**
+     * 1-based PDF page containing the quote, when known
+     * @nullable
+     */
+  pageNumber: number | null;
   /** True only if the quote was found verbatim in the source document text */
   verified: boolean;
   createdAt: string;

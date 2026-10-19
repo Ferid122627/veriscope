@@ -58,13 +58,13 @@ export default function Risks() {
             : risks.data.map((r, i) => (
               <Link key={r.id} href={`/risks/${r.id}`} data-testid={`row-risk-${r.id}`} className="relative grid grid-cols-1 gap-1.5 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[90px_1fr_110px_70px_70px_100px] md:items-center md:gap-4 rise" style={{ animationDelay: `${i * 20}ms` }}>
                 <span className={cn("absolute inset-y-0 left-0 w-[3px]", sevStyle[r.severity]?.bar)} />
-                <span><SeverityChip severity={r.severity} /></span>
+                <span className="flex flex-col items-start gap-0.5"><SeverityChip severity={r.severity} />{r.likelihood && <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground" data-testid={`text-likelihood-${r.id}`}>lkl {r.likelihood}</span>}</span>
                 <span className="min-w-0">
                   <span className="block truncate text-[14px] font-medium">{r.title}</span>
                   <span className="block truncate font-mono text-[11px] text-muted-foreground">{r.category} · {r.documentTitle}</span>
                 </span>
                 <span><StatusChip status={r.status} /></span>
-                <span className="font-mono text-sm tabular md:text-right">{r.evidenceCount}<span className="md:hidden text-muted-foreground"> quotes</span></span>
+                <span className="font-mono text-sm tabular md:text-right">{r.evidenceCount}<span className="md:hidden text-muted-foreground"> {r.evidenceCount === 1 ? "quote" : "quotes"}</span></span>
                 <span className="font-mono text-sm tabular md:text-right">{r.openActionCount}<span className="md:hidden text-muted-foreground"> open actions</span></span>
                 <span className="font-mono text-[11px] text-muted-foreground">{ago(r.updatedAt)}</span>
               </Link>

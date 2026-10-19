@@ -21,10 +21,13 @@ import type {
 
 import type {
   ActivityItem,
+  AnalyzeRequest,
   DashboardSummary,
   Document,
   DocumentDetail,
   DocumentInput,
+  DocumentUpload,
+  DuplicateDocumentError,
   ErrorResponse,
   HealthStatus,
   ListRisksParams,
@@ -334,7 +337,7 @@ return customFetch<DocumentDetail>(getCreateDocumentUrl(),
 
 export const getCreateDocumentMutationKey = () => ['createDocument'] as const;
 
-export const getCreateDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+export const getCreateDocumentMutationOptions = <TError = ErrorType<ErrorResponse | DuplicateDocumentError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDocument>>, TError,CreateDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createDocument>>, TError,CreateDocumentMutationVariables, TContext> => {
 
@@ -363,13 +366,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof createDocument>>>
     export type CreateDocumentMutationBody = BodyType<DocumentInput>
-    export type CreateDocumentMutationError = ErrorType<ErrorResponse>
+    export type CreateDocumentMutationError = ErrorType<ErrorResponse | DuplicateDocumentError>
     export type CreateDocumentMutationVariables = {data: BodyType<DocumentInput>}
 
     /**
  * @summary Add a document from plain text
  */
-export const useCreateDocument = <TError = ErrorType<ErrorResponse>,
+export const useCreateDocument = <TError = ErrorType<ErrorResponse | DuplicateDocumentError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDocument>>, TError,CreateDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createDocument>>,
@@ -378,6 +381,174 @@ export const useCreateDocument = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateDocumentMutationOptions(options));
+    }
+
+export const getUploadDocumentUrl = () => {
+
+
+
+
+  return `/api/documents/upload`
+}
+
+/**
+ * @summary Upload a PDF, DOCX or TXT file and extract its text
+ */
+export const uploadDocument = async (documentUpload: DocumentUpload, options?: Parameters<typeof customFetch>[1]): Promise<DocumentDetail> => {
+    const formData = new FormData();
+formData.append(`file`, documentUpload.file);
+if(documentUpload.title !== undefined) {
+ formData.append(`title`, documentUpload.title);
+ }
+
+  return customFetch<DocumentDetail>(getUploadDocumentUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadDocumentMutationKey = () => ['uploadDocument'] as const;
+
+export const getUploadDocumentMutationOptions = <TError = ErrorType<ErrorResponse | DuplicateDocumentError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,UploadDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,UploadDocumentMutationVariables, TContext> => {
+
+const mutationKey = getUploadDocumentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadDocument>>, UploadDocumentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadDocument(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof uploadDocument>>>
+    export type UploadDocumentMutationBody = BodyType<DocumentUpload>
+    export type UploadDocumentMutationError = ErrorType<ErrorResponse | DuplicateDocumentError>
+    export type UploadDocumentMutationVariables = {data: BodyType<DocumentUpload>}
+
+    /**
+ * @summary Upload a PDF, DOCX or TXT file and extract its text
+ */
+export const useUploadDocument = <TError = ErrorType<ErrorResponse | DuplicateDocumentError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,UploadDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadDocument>>,
+        TError,
+        UploadDocumentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadDocumentMutationOptions(options));
+    }
+
+export const getAnalyzeDocumentUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents/${id}/analyze`
+}
+
+/**
+ * @summary Start AI risk analysis of the document's text (runs in the background; poll the document for status)
+ */
+export const analyzeDocument = async (id: number,
+    analyzeRequest?: AnalyzeRequest, options?: Parameters<typeof customFetch>[1]): Promise<Document> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Document>(getAnalyzeDocumentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(analyzeRequest)
+  }
+);}
+
+
+
+
+
+export const getAnalyzeDocumentMutationKey = () => ['analyzeDocument'] as const;
+
+export const getAnalyzeDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeDocument>>, TError,AnalyzeDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeDocument>>, TError,AnalyzeDocumentMutationVariables, TContext> => {
+
+const mutationKey = getAnalyzeDocumentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeDocument>>, AnalyzeDocumentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  analyzeDocument(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzeDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeDocument>>>
+    export type AnalyzeDocumentMutationBody = BodyType<AnalyzeRequest> | undefined
+    export type AnalyzeDocumentMutationError = ErrorType<ErrorResponse>
+    export type AnalyzeDocumentMutationVariables = {id: number;data?: BodyType<AnalyzeRequest>}
+
+    /**
+ * @summary Start AI risk analysis of the document's text (runs in the background; poll the document for status)
+ */
+export const useAnalyzeDocument = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeDocument>>, TError,AnalyzeDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof analyzeDocument>>,
+        TError,
+        AnalyzeDocumentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAnalyzeDocumentMutationOptions(options));
     }
 
 export const getGetDocumentUrl = (id: number,) => {

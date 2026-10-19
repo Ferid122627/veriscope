@@ -5,6 +5,7 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+import type { DocumentSource } from './documentSource';
 import type { DocumentStatus } from './documentStatus';
 
 export interface Document {
@@ -13,7 +14,36 @@ export interface Document {
   /** @nullable */
   filename: string | null;
   charCount: number;
+  sourceType: DocumentSource;
+  /**
+     * Original file size in bytes (null for pasted text)
+     * @nullable
+     */
+  fileSize: number | null;
+  /**
+     * Number of pages (PDF only)
+     * @nullable
+     */
+  pageCount: number | null;
   status: DocumentStatus;
+  /**
+     * Why the last analysis failed
+     * @nullable
+     */
+  analysisError: string | null;
+  /** @nullable */
+  analysisModel: string | null;
+  /**
+     * Number of text sections sent to the AI in the current/last analysis
+     * @nullable
+     */
+  chunksTotal: number | null;
+  /** @nullable */
+  chunksDone: number | null;
+  /** @nullable */
+  analysisStartedAt: Date | null;
+  /** @nullable */
+  analyzedAt: Date | null;
   riskCount: number;
   createdAt: Date;
 }

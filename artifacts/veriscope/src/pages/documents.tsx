@@ -1,80 +1,24 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { Link, useSearch, useLocation } from "wouter";
+import { useInvalidateAll } from "@/hooks/use-invalidate";
 import { Plus, FileText, Trash2, Loader2 } from "lucide-react";
+import { AddDocumentDialog } from "@/components/add-document-dialog";
 import {
-  useListDocuments, useCreateDocument, useDeleteDocument,
-  getListDocumentsQueryKey, getGetDashboardSummaryQueryKey, getGetRecentActivityQueryKey,
+  useListDocuments, useDeleteDocument,
+  getListDocumentsQueryKey,
 } from "@workspace/api-client-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PageHeader, Skel, EmptyState, ErrorState, StatusChip, ago, num, btnPrimary, btnGhost, apiErrorMessage } from "@/components/kit";
-
-function useInvalidateAll() {
-  const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetRecentActivityQueryKey() });
-    qc.invalidateQueries({ queryKey: ["/api/risks"] });
-  };
-}
-
-function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const create = useCreateDocument();
-  const invalidate = useInvalidateAll();
-  const { toast } = useToast();
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) { setErr("Title and text are both required."); return; }
-    setErr(null);
-    create.mutate({ data: { title: title.trim(), content } }, {
-      onSuccess: (doc) => {
-        invalidate(); toast({ title: "Document added", description: `${doc.title} · ${num(doc.charCount)} characters` });
-        setTitle(""); setContent(""); onOpenChange(false);
-      },
-      onError: (e) => setErr(apiErrorMessage(e)),
-    });
-  };
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-card">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-2xl font-normal">Add a document</DialogTitle>
-          <DialogDescription>Paste the full text exactly as it appears. Evidence quotes are verified against this text character for character.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <label className="block">
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground">Title</span>
-            <input data-testid="input-title" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Master Services Agreement — Halden Logistics" className="mt-1.5 h-9 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" />
-          </label>
-          <label className="block">
-            <span className="flex justify-between font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground"><span>Document text</span><span className="tabular">{num(content.length)} chars</span></span>
-            <textarea data-testid="input-content" value={content} onChange={(e) => setContent(e.target.value)} rows={12} placeholder="Paste contract, policy or audit report text..." className="mt-1.5 w-full resize-y rounded-sm border border-input bg-background px-3 py-2 font-serif text-[15px] leading-relaxed outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" />
-          </label>
-          {err && <div data-testid="text-form-error" className="rounded-sm border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{err}</div>}
-          <div className="flex justify-end gap-2">
-            <button type="button" className={btnGhost} onClick={() => onOpenChange(false)} data-testid="button-cancel">Cancel</button>
-            <button type="submit" className={btnPrimary} disabled={create.isPending} data-testid="button-submit-document">
-              {create.isPending && <Loader2 className="size-3.5 animate-spin" />} Add document
-            </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { PageHeader, Skel, EmptyState, ErrorState, Chip, DocStatus, ago, num, btnPrimary, btnGhost, apiErrorMessage } from "@/components/kit";
 
 export default function Documents() {
-  const docs = useListDocuments({ query: { queryKey: getListDocumentsQueryKey() } });
+  const docs = useListDocuments({ query: { queryKey: getListDocumentsQueryKey(), refetchInterval: (q) => (q.state.data?.some((d) => d.status === "analyzing") ? 3000 : false) } });
+  const search = useSearch(); const [, navigate] = useLocation();
   const del = useDeleteDocument();
   const invalidate = useInvalidateAll();
   const { toast } = useToast();
   const [adding, setAdding] = useState(false);
+  useEffect(() => { if (new URLSearchParams(search).get("add") === "1") { setAdding(true); navigate("/documents", { replace: true }); } }, [search, navigate]);
   const [pending, setPending] = useState<{ id: number; title: string } | null>(null);
 
   const confirmDelete = () => {
@@ -103,19 +47,19 @@ export default function Documents() {
                 body="Veriscope works from source text. Add a contract, policy or audit report and it becomes the ground truth every risk must quote from."
                 action={<button className={btnPrimary} onClick={() => setAdding(true)} data-testid="button-add-first-document"><Plus className="size-4" /> Add your first document</button>} />
             ) : docs.data.map((d, i) => (
-              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_110px_90px_80px_120px_40px] rise" style={{ animationDelay: `${i * 25}ms` }} data-testid={`row-document-${d.id}`}>
+              <div key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40 md:grid-cols-[1fr_170px_90px_80px_120px_40px] rise" style={{ animationDelay: `${i * 25}ms` }} data-testid={`row-document-${d.id}`}>
                 <Link href={`/documents/${d.id}`} className="min-w-0" data-testid={`link-document-${d.id}`}>
                   <div className="truncate font-medium text-[14px] group-hover:underline underline-offset-4 decoration-accent decoration-2">{d.title}</div>
                   {d.filename && <div className="truncate font-mono text-[11px] text-muted-foreground">{d.filename}</div>}
                 </Link>
-                <span className="hidden md:block"><StatusChip status={d.status} /></span>
+                <span className="hidden md:flex items-center gap-1.5"><DocStatus status={d.status} /><Chip className="border-border text-muted-foreground">{d.sourceType}</Chip></span>
                 <span className="hidden text-right font-mono text-xs tabular text-muted-foreground md:block">{num(d.charCount)}</span>
                 <span className="hidden text-right font-mono text-sm tabular md:block">{d.riskCount}</span>
                 <span className="hidden font-mono text-[11px] text-muted-foreground md:block">{ago(d.createdAt)}</span>
                 <button onClick={() => setPending({ id: d.id, title: d.title })} data-testid={`button-delete-document-${d.id}`} aria-label="Delete document" className="grid size-7 place-items-center justify-self-end rounded-sm text-muted-foreground opacity-60 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
                   <Trash2 className="size-3.5" />
                 </button>
-                <div className="col-span-2 flex items-center gap-3 font-mono text-[11px] text-muted-foreground md:hidden"><StatusChip status={d.status} />{d.riskCount} risks · {ago(d.createdAt)}</div>
+                <div className="col-span-2 flex items-center gap-3 font-mono text-[11px] text-muted-foreground md:hidden"><DocStatus status={d.status} />{d.riskCount} risks · {ago(d.createdAt)}</div>
               </div>
             ))}
         </div>

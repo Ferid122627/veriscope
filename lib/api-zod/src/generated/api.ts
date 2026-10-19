@@ -36,7 +36,16 @@ export const ListDocumentsResponseItem = zod.object({
   "title": zod.string(),
   "filename": zod.string().nullable(),
   "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
   "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 })
@@ -62,12 +71,88 @@ export const CreateDocumentResponse = zod.object({
   "title": zod.string(),
   "filename": zod.string().nullable(),
   "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
   "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
-  "content": zod.string()
+  "content": zod.string(),
+  "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
 }))
+
+
+/**
+ * @summary Upload a PDF, DOCX or TXT file and extract its text
+ */
+export const uploadDocumentBodyTitleMax = 200;
+
+
+
+export const UploadDocumentBody = zod.object({
+  "file": zod.instanceof(Blob),
+  "title": zod.string().max(uploadDocumentBodyTitleMax).optional()
+})
+
+export const UploadDocumentResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "filename": zod.string().nullable(),
+  "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
+  "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
+  "riskCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "content": zod.string(),
+  "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
+}))
+
+
+/**
+ * @summary Start AI risk analysis of the document's text (runs in the background; poll the document for status)
+ */
+export const AnalyzeDocumentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const AnalyzeDocumentBody = zod.object({
+  "replaceExisting": zod.boolean().optional().describe('Re-run analysis on an analyzed document, replacing its previous risks once the new analysis succeeds')
+})
+
+export const AnalyzeDocumentResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "filename": zod.string().nullable(),
+  "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
+  "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
+  "riskCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
 
 
 /**
@@ -82,11 +167,21 @@ export const GetDocumentResponse = zod.object({
   "title": zod.string(),
   "filename": zod.string().nullable(),
   "charCount": zod.number().int(),
+  "sourceType": zod.enum(['text', 'pdf', 'docx']),
+  "fileSize": zod.number().int().nullable().describe('Original file size in bytes (null for pasted text)'),
+  "pageCount": zod.number().int().nullable().describe('Number of pages (PDF only)'),
   "status": zod.enum(['uploaded', 'analyzing', 'analyzed', 'failed']),
+  "analysisError": zod.string().nullable().describe('Why the last analysis failed'),
+  "analysisModel": zod.string().nullable(),
+  "chunksTotal": zod.number().int().nullable().describe('Number of text sections sent to the AI in the current/last analysis'),
+  "chunksDone": zod.number().int().nullable(),
+  "analysisStartedAt": zod.coerce.date().nullable(),
+  "analyzedAt": zod.coerce.date().nullable(),
   "riskCount": zod.number().int(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
-  "content": zod.string()
+  "content": zod.string(),
+  "pageOffsets": zod.array(zod.number().int()).nullable().describe('Character offset where each PDF page starts (index 0 = page 1)')
 }))
 
 
@@ -117,6 +212,9 @@ export const ListRisksResponseItem = zod.object({
   "description": zod.string(),
   "category": zod.string(),
   "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
+  "businessImpact": zod.string().nullable(),
+  "reviewNotes": zod.string().nullable().describe('Uncertainty or points a human reviewer should check'),
   "status": zod.enum(['open', 'mitigating', 'resolved']),
   "evidenceCount": zod.number().int(),
   "openActionCount": zod.number().int(),
@@ -141,6 +239,9 @@ export const GetRiskResponse = zod.object({
   "description": zod.string(),
   "category": zod.string(),
   "severity": zod.enum(['low', 'medium', 'high', 'critical']),
+  "likelihood": zod.union([zod.enum(['low', 'medium', 'high']),zod.null()]),
+  "businessImpact": zod.string().nullable(),
+  "reviewNotes": zod.string().nullable().describe('Uncertainty or points a human reviewer should check'),
   "status": zod.enum(['open', 'mitigating', 'resolved']),
   "evidenceCount": zod.number().int(),
   "openActionCount": zod.number().int(),
@@ -155,6 +256,7 @@ export const GetRiskResponse = zod.object({
   "quote": zod.string(),
   "startOffset": zod.number().int().nullable(),
   "endOffset": zod.number().int().nullable(),
+  "pageNumber": zod.number().int().nullable().describe('1-based PDF page containing the quote, when known'),
   "verified": zod.boolean().describe('True only if the quote was found verbatim in the source document text'),
   "createdAt": zod.coerce.date()
 }).describe('A verbatim quote from a source document, located by character offsets')),

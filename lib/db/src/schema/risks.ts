@@ -5,6 +5,7 @@ import { documentsTable } from "./documents";
 
 export const RISK_SEVERITIES = ["low", "medium", "high", "critical"] as const;
 export const RISK_STATUSES = ["open", "mitigating", "resolved"] as const;
+export const RISK_LIKELIHOODS = ["low", "medium", "high"] as const;
 export type RiskSeverity = (typeof RISK_SEVERITIES)[number];
 export type RiskStatus = (typeof RISK_STATUSES)[number];
 
@@ -19,6 +20,10 @@ export const risksTable = pgTable(
     description: text("description").notNull(),
     category: text("category").notNull(),
     severity: text("severity", { enum: RISK_SEVERITIES }).notNull(),
+    likelihood: text("likelihood", { enum: RISK_LIKELIHOODS }),
+    businessImpact: text("business_impact"),
+    // Uncertainty or points a human reviewer should check.
+    reviewNotes: text("review_notes"),
     status: text("status", { enum: RISK_STATUSES }).notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

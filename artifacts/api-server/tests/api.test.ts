@@ -91,7 +91,12 @@ describe("risks", () => {
     const content = "The vendor has no SOC 2 report. Data is stored outside the EU.";
     const [doc] = await db
       .insert(documentsTable)
-      .values({ title: "Test vendor review", content, charCount: content.length })
+      .values({
+        title: "Test vendor review",
+        content,
+        charCount: content.length,
+        contentHash: `test-${Date.now()}-${Math.random()}`,
+      })
       .returning();
     createdDocumentIds.push(doc!.id);
 
@@ -141,6 +146,12 @@ describe("risks", () => {
     expect(res.body.actions).toHaveLength(2);
     expect(res.body.actions[0].dueDate).toBe("2026-11-30");
     expect(res.body.assessments[0].verdict).toBe("identified");
+
+    // Regression: riskCount must count this document's risks (correlated subquery).
+    const docRes = await request(app).get(`/api/documents/${doc!.id}`);
+    expect(docRes.body.riskCount).toBe(1);
+    const listed = (await request(app).get("/api/documents")).body.find((d: { id: number }) => d.id === doc!.id);
+    expect(listed.riskCount).toBe(1);
 
     const filtered = await request(app).get(`/api/risks?documentId=${doc!.id}&severity=high`);
     expect(filtered.status).toBe(200);

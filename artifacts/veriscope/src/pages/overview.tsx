@@ -127,7 +127,7 @@ export default function Overview() {
             : !activity.data?.length ? (
               <EmptyState testId="empty-activity" icon={<Activity className="size-5" />} title="The ledger is blank"
                 body="Add a document to begin. Every document added, risk identified, and verdict recorded will be logged here in order."
-                action={<Link href="/documents" data-testid="link-add-first-document" className={btnPrimary}>Add a document</Link>} />
+                action={<Link href="/documents?add=1" data-testid="link-add-first-document" className={btnPrimary}>Add a document</Link>} />
             ) : (
               <ol className="relative">
                 {activity.data.map((a, i) => {

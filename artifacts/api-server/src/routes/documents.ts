@@ -1,37 +1,109 @@
-import { Router, type IRouter } from "express";
+import { createHash } from "node:crypto";
+import { Router, type IRouter, type RequestHandler } from "express";
+import multer from "multer";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, documentsTable, risksTable } from "@workspace/db";
+import { db, documentsTable, risksTable, type DocumentRow } from "@workspace/db";
 import {
+  AnalyzeDocumentBody,
+  AnalyzeDocumentParams,
+  AnalyzeDocumentResponse,
   CreateDocumentBody,
   CreateDocumentResponse,
   DeleteDocumentParams,
   GetDocumentParams,
   GetDocumentResponse,
   ListDocumentsResponse,
+  UploadDocumentResponse,
 } from "@workspace/api-zod";
+import {
+  ExtractionError,
+  MAX_UPLOAD_BYTES,
+  assertTextWithinLimits,
+  extractFromUpload,
+  type ExtractedDocument,
+} from "../lib/text-extraction";
+import { startAnalysis } from "../lib/analysis-runner";
 
 const router: IRouter = Router();
 
+// Table-qualified on purpose: Drizzle renders columns unqualified in
+// single-table selects, which would bind "id" to risks.id inside the subquery.
 const riskCount = sql<number>`(
-  select count(*)::int from ${risksTable} where ${risksTable.documentId} = ${documentsTable.id}
+  select count(*)::int from risks r where r.document_id = "documents"."id"
 )`;
 
-const summaryColumns = {
+function toSummary(row: Omit<DocumentRow, "content" | "contentHash"> & { riskCount: number }) {
+  const { pageOffsets, ...rest } = row;
+  return { ...rest, pageCount: pageOffsets ? pageOffsets.length : null };
+}
+
+function toDetail(row: DocumentRow & { riskCount: number }) {
+  const { content, contentHash: _hash, ...summary } = row;
+  return { ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null };
+}
+
+const selectSummary = {
   id: documentsTable.id,
   title: documentsTable.title,
   filename: documentsTable.filename,
   charCount: documentsTable.charCount,
+  sourceType: documentsTable.sourceType,
+  fileSize: documentsTable.fileSize,
+  pageOffsets: documentsTable.pageOffsets,
   status: documentsTable.status,
+  analysisError: documentsTable.analysisError,
+  analysisModel: documentsTable.analysisModel,
+  chunksTotal: documentsTable.chunksTotal,
+  chunksDone: documentsTable.chunksDone,
+  analysisStartedAt: documentsTable.analysisStartedAt,
+  analyzedAt: documentsTable.analyzedAt,
   createdAt: documentsTable.createdAt,
   riskCount,
 };
 
+function hashContent(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+type InsertOutcome = { created: DocumentRow } | { duplicateOf: number };
+
+/** Insert unless identical text already exists (enforced by a unique index). */
+async function insertDocument(input: {
+  title: string;
+  filename: string | null;
+  fileSize: number | null;
+  extracted: ExtractedDocument;
+}): Promise<InsertOutcome> {
+  const contentHash = hashContent(input.extracted.text);
+  const [row] = await db
+    .insert(documentsTable)
+    .values({
+      title: input.title,
+      filename: input.filename,
+      fileSize: input.fileSize,
+      content: input.extracted.text,
+      charCount: input.extracted.text.length,
+      contentHash,
+      sourceType: input.extracted.sourceType,
+      pageOffsets: input.extracted.pageOffsets,
+    })
+    .onConflictDoNothing({ target: documentsTable.contentHash })
+    .returning();
+  if (row) return { created: row };
+
+  const [existing] = await db
+    .select({ id: documentsTable.id })
+    .from(documentsTable)
+    .where(eq(documentsTable.contentHash, contentHash));
+  return { duplicateOf: existing!.id };
+}
+
 router.get("/documents", async (_req, res) => {
   const rows = await db
-    .select(summaryColumns)
+    .select(selectSummary)
     .from(documentsTable)
     .orderBy(desc(documentsTable.createdAt), desc(documentsTable.id));
-  res.json(ListDocumentsResponse.parse(rows));
+  res.json(ListDocumentsResponse.parse(rows.map(toSummary)));
 });
 
 router.post("/documents", async (req, res) => {
@@ -41,23 +113,125 @@ router.post("/documents", async (req, res) => {
     return;
   }
   const { title, content, filename } = parsed.data;
-  if (content.trim().length === 0) {
-    res.status(400).json({ error: "Document text is empty" });
-    return;
+  const text = content.replace(/\r\n?/g, "\n");
+  try {
+    assertTextWithinLimits(text);
+  } catch (err) {
+    if (err instanceof ExtractionError) {
+      res.status(err.status === 422 ? 400 : err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
   }
 
-  const [row] = await db
-    .insert(documentsTable)
-    .values({
-      title: title.trim(),
-      content,
-      filename: filename ?? null,
-      charCount: content.length,
-    })
-    .returning();
+  const outcome = await insertDocument({
+    title: title.trim(),
+    filename: filename ?? null,
+    fileSize: null,
+    extracted: { text, sourceType: "text", pageOffsets: null },
+  });
+  if ("duplicateOf" in outcome) {
+    res.status(409).json({
+      error: "A document with exactly the same text already exists.",
+      existingDocumentId: outcome.duplicateOf,
+    });
+    return;
+  }
+  req.log.info({ documentId: outcome.created.id, charCount: outcome.created.charCount }, "Document created");
+  res.status(201).json(CreateDocumentResponse.parse(toDetail({ ...outcome.created, riskCount: 0 })));
+});
 
-  req.log.info({ documentId: row!.id, charCount: row!.charCount }, "Document created");
-  res.status(201).json(CreateDocumentResponse.parse({ ...row, riskCount: 0 }));
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5 },
+});
+
+// Translate multer's errors into the API's {error} shape.
+const receiveFile: RequestHandler = (req, res, next) => {
+  upload.single("file")(req, res, (err: unknown) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const tooLarge = err.code === "LIMIT_FILE_SIZE";
+      res.status(tooLarge ? 413 : 400).json({
+        error: tooLarge
+          ? `The file is larger than the ${MAX_UPLOAD_BYTES / 1024 / 1024} MB limit.`
+          : `Upload rejected: ${err.message}. Send one file in the "file" field.`,
+      });
+      return;
+    }
+    next(err);
+  });
+};
+
+router.post("/documents/upload", receiveFile, async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    res.status(400).json({ error: 'No file received. Send the document in the "file" field.' });
+    return;
+  }
+  // Browsers send UTF-8 filenames; multer decodes them as latin1.
+  const filename = Buffer.from(file.originalname, "latin1").toString("utf8");
+  const rawTitle = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+  if (rawTitle.length > 200) {
+    res.status(400).json({ error: "Title must be 200 characters or fewer." });
+    return;
+  }
+  const title = (rawTitle || filename.replace(/\.[^.]+$/, "") || filename).slice(0, 200);
+
+  let extracted: ExtractedDocument;
+  try {
+    extracted = await extractFromUpload(file.buffer, filename);
+  } catch (err) {
+    if (err instanceof ExtractionError) {
+      req.log.warn({ filename, size: file.size, status: err.status }, "Upload rejected: %s", err.message);
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const outcome = await insertDocument({ title, filename, fileSize: file.size, extracted });
+  if ("duplicateOf" in outcome) {
+    res.status(409).json({
+      error: "This document's text is identical to a document that already exists.",
+      existingDocumentId: outcome.duplicateOf,
+    });
+    return;
+  }
+  req.log.info(
+    {
+      documentId: outcome.created.id,
+      sourceType: extracted.sourceType,
+      pages: extracted.pageOffsets?.length ?? null,
+      charCount: outcome.created.charCount,
+    },
+    "Document uploaded",
+  );
+  res.status(201).json(UploadDocumentResponse.parse(toDetail({ ...outcome.created, riskCount: 0 })));
+});
+
+router.post("/documents/:id/analyze", async (req, res) => {
+  const params = AnalyzeDocumentParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid document id" });
+    return;
+  }
+  const body = AnalyzeDocumentBody.safeParse(req.body ?? {});
+  if (!body.success) {
+    res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid input" });
+    return;
+  }
+  const result = await startAnalysis(params.data.id, body.data.replaceExisting ?? false, req.log);
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+  const [count] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(risksTable)
+    .where(eq(risksTable.documentId, params.data.id));
+  const { content: _c, contentHash: _h, ...summary } = result.document;
+  res.status(202).json(AnalyzeDocumentResponse.parse(toSummary({ ...summary, riskCount: count!.n })));
 });
 
 router.get("/documents/:id", async (req, res) => {
@@ -67,14 +241,15 @@ router.get("/documents/:id", async (req, res) => {
     return;
   }
   const [row] = await db
-    .select({ ...summaryColumns, content: documentsTable.content })
+    .select({ ...selectSummary, content: documentsTable.content })
     .from(documentsTable)
     .where(eq(documentsTable.id, params.data.id));
   if (!row) {
     res.status(404).json({ error: "Document not found" });
     return;
   }
-  res.json(GetDocumentResponse.parse(row));
+  const { content, ...summary } = row;
+  res.json(GetDocumentResponse.parse({ ...toSummary(summary), content, pageOffsets: row.pageOffsets ?? null }));
 });
 
 router.delete("/documents/:id", async (req, res) => {

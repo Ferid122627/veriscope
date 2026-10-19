@@ -25,6 +25,8 @@ export const evidenceTable = pgTable(
     startOffset: integer("start_offset"),
     endOffset: integer("end_offset"),
     verified: boolean("verified").notNull(),
+    // 1-based page in the source PDF, derived from startOffset; null if unknown.
+    pageNumber: integer("page_number"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("evidence_risk_id_idx").on(t.riskId)],

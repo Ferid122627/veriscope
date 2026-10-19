@@ -7,6 +7,11 @@
  */
 import type { Document } from './document';
 
-export type DocumentDetail = Document & {
+export type DocumentDetail = Document & ({
   content: string;
-};
+  /**
+     * Character offset where each PDF page starts (index 0 = page 1)
+     * @nullable
+     */
+  pageOffsets: number[] | null;
+});

@@ -2,19 +2,9 @@ import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { GetSystemStatusResponse } from "@workspace/api-zod";
+import { isAiConfigured } from "../lib/ai/client";
 
 const router: IRouter = Router();
-
-// AI provider credentials are injected by Replit AI Integrations as env vars.
-// We only report whether they are present — never their values.
-function aiProviderConfigured(): boolean {
-  return Boolean(
-    (process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"] &&
-      process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"]) ||
-      (process.env["AI_INTEGRATIONS_OPENAI_API_KEY"] &&
-        process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"]),
-  );
-}
 
 router.get("/system/status", async (req, res) => {
   let database: "ok" | "error" = "ok";
@@ -28,7 +18,7 @@ router.get("/system/status", async (req, res) => {
   const data = GetSystemStatusResponse.parse({
     api: "ok",
     database,
-    aiProvider: aiProviderConfigured() ? "configured" : "not_configured",
+    aiProvider: isAiConfigured() ? "configured" : "not_configured",
     checkedAt: new Date(),
   });
   res.json(data);

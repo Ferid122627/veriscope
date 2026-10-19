@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { failInterruptedAnalyses } from "./lib/analysis-runner";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  failInterruptedAnalyses(logger).catch((e) =>
+    logger.error({ err: e }, "Could not reset interrupted analyses"),
+  );
 });
