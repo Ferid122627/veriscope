@@ -1,0 +1,30 @@
+The reassessment tests are now stable. Proceed with OpenAI integration so I can test Veriscope's real AI-powered analysis.
+
+### Current verified state
+- Node.js 24.13.0; app starts correctly.
+- PDF extraction works.
+- Full test suite passed 6 consecutive runs (62/62 each).
+- Typecheck passed.
+- `proxy-addr` 2.0.8 security override remains in place.
+- Only `artifacts/api-server/tests/reassessment.test.ts` is currently modified, with test-only synchronization fixes. Preserve these changes.
+- The development database `heliumdb` has 0 documents and 0 risks.
+- OpenAI is not yet connected.
+- A possible production consistency issue remains in `artifacts/api-server/routes/risks.ts`: concurrent reads can briefly show a completed reassessment before all related assessment/evidence data is visible. Do not modify it as part of this task; report it separately.
+
+### Goal
+Connect the existing Replit OpenAI integration and verify that real AI inference works through the application—not just through mocked tests.
+
+### Instructions
+1. Inspect the existing provider implementation and verify the exact environment-variable names and configuration mechanism used by this repository.
+2. Check whether the Replit OpenAI integration is available in this workspace. If setup requires my authorization, a secret, or enabling a paid integration, stop and tell me exactly what to do in the Replit UI. Do not ask me to paste credentials into chat.
+3. Do not invent keys, print secrets, hardcode credentials, or silently use mocked responses as a substitute for real AI.
+4. Preserve the existing architecture and the current test-file changes. Do not change unrelated configuration or dependencies.
+5. Once configured, restart services and check `/api/system/status`. Then make one small real AI smoke test with a harmless sample input. Confirm that a real provider request occurred and that the response was parsed and validated by the application.
+6. If the smoke test succeeds, test a small sample business document end to end: upload, text extraction, AI risk analysis, source-grounded evidence excerpts, and risk-register creation. Report any unsupported or unverified claims rather than pretending the workflow succeeded.
+7. Test reassessment only after initial analysis succeeds. If you observe the known response-consistency issue, document it without changing `routes/risks.ts`.
+8. Use `veriscope_test` for automated tests. Before any manual end-to-end upload, explicitly identify the active database and use disposable demo data without deleting existing user data.
+9. Separate mocked automated-test results from real AI integration results. Keep the real smoke test small to minimize usage costs.
+10. Do not commit, push, reset, rebase, rewrite Git history, or remove the `proxy-addr` security fix.
+11. If the integration is unavailable or credentials are missing, stop and give me the exact next action needed.
+
+When done, report the files changed, configuration status without secret values, whether a real provider call succeeded, the end-to-end workflow results, tests run, and remaining issues. Do not proceed to UI polish or unrelated features.
