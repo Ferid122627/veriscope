@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Veriscope"
+description = "An AI-powered enterprise risk management platform. Users add business documents; AI identifies risks backed by verbatim, source-verified evidence quotes, recommends mitigation actions, and reassesses new evidence to determine whether each risk is actually resolved. Built for risk and compliance teams."
+version = "1.0.0"
+id = "artifacts/veriscope"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21282
+
+[services.development]
+run = "pnpm --filter @workspace/veriscope run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/veriscope", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/veriscope/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21282"
+BASE_PATH = "/"

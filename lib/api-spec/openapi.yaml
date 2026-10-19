@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Veriscope API — documents, risks, evidence, assessments, mitigation actions
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: documents
+    description: Source business documents
+  - name: risks
+    description: Identified risks with evidence, actions and assessment history
+  - name: dashboard
+    description: Aggregates for the overview
 paths:
   /healthz:
     get:
@@ -24,6 +30,172 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /system/status:
+    get:
+      operationId: getSystemStatus
+      tags: [health]
+      summary: Live status of API, database and AI provider configuration
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List documents, newest first
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: createDocument
+      tags: [documents]
+      summary: Add a document from plain text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /documents/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document including its full text
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document and everything derived from it
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /risks:
+    get:
+      operationId: listRisks
+      tags: [risks]
+      summary: List risks with optional filters
+      parameters:
+        - name: severity
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/RiskSeverity"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/RiskStatus"
+        - name: documentId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Risks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Risk"
+  /risks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getRisk
+      tags: [risks]
+      summary: Risk with evidence, mitigation actions and assessment history
+      responses:
+        "200":
+          description: Risk detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Portfolio-level counts
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent events across documents, risks and assessments
+      responses:
+        "200":
+          description: Activity, newest first (max 20)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +205,259 @@ components:
           type: string
       required:
         - status
-
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    SystemStatus:
+      type: object
+      required: [api, database, aiProvider, checkedAt]
+      properties:
+        api:
+          type: string
+          enum: [ok]
+        database:
+          type: string
+          enum: [ok, error]
+        aiProvider:
+          type: string
+          enum: [configured, not_configured]
+        checkedAt:
+          type: string
+          format: date-time
+    DocumentStatus:
+      type: string
+      enum: [uploaded, analyzing, analyzed, failed]
+    Document:
+      type: object
+      required: [id, title, filename, charCount, status, riskCount, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        filename:
+          type: ["string", "null"]
+        charCount:
+          type: integer
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        riskCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: string
+    DocumentInput:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          minLength: 1
+        filename:
+          type: string
+    RiskSeverity:
+      type: string
+      enum: [low, medium, high, critical]
+    RiskStatus:
+      type: string
+      enum: [open, mitigating, resolved]
+    Risk:
+      type: object
+      required:
+        [id, documentId, documentTitle, title, description, category, severity, status, evidenceCount, openActionCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        documentId:
+          type: integer
+        documentTitle:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        severity:
+          $ref: "#/components/schemas/RiskSeverity"
+        status:
+          $ref: "#/components/schemas/RiskStatus"
+        evidenceCount:
+          type: integer
+        openActionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Evidence:
+      type: object
+      description: A verbatim quote from a source document, located by character offsets
+      required: [id, riskId, documentId, documentTitle, quote, startOffset, endOffset, verified, createdAt]
+      properties:
+        id:
+          type: integer
+        riskId:
+          type: integer
+        documentId:
+          type: integer
+        documentTitle:
+          type: string
+        quote:
+          type: string
+        startOffset:
+          type: ["integer", "null"]
+        endOffset:
+          type: ["integer", "null"]
+        verified:
+          type: boolean
+          description: True only if the quote was found verbatim in the source document text
+        createdAt:
+          type: string
+          format: date-time
+    ActionStatus:
+      type: string
+      enum: [todo, in_progress, done]
+    MitigationAction:
+      type: object
+      required: [id, riskId, description, owner, dueDate, status, createdAt]
+      properties:
+        id:
+          type: integer
+        riskId:
+          type: integer
+        description:
+          type: string
+        owner:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+          description: Calendar date, YYYY-MM-DD
+        status:
+          $ref: "#/components/schemas/ActionStatus"
+        createdAt:
+          type: string
+          format: date-time
+    AssessmentVerdict:
+      type: string
+      enum: [identified, resolved, partially_resolved, not_resolved, insufficient_evidence]
+    Assessment:
+      type: object
+      required: [id, riskId, kind, verdict, rationale, confidence, evidenceDocumentId, model, createdAt]
+      properties:
+        id:
+          type: integer
+        riskId:
+          type: integer
+        kind:
+          type: string
+          enum: [initial, reassessment]
+        verdict:
+          $ref: "#/components/schemas/AssessmentVerdict"
+        rationale:
+          type: string
+        confidence:
+          type: ["number", "null"]
+        evidenceDocumentId:
+          type: ["integer", "null"]
+        model:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+    RiskDetail:
+      allOf:
+        - $ref: "#/components/schemas/Risk"
+        - type: object
+          required: [evidence, actions, assessments]
+          properties:
+            evidence:
+              type: array
+              items:
+                $ref: "#/components/schemas/Evidence"
+            actions:
+              type: array
+              items:
+                $ref: "#/components/schemas/MitigationAction"
+            assessments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Assessment"
+    SeverityCounts:
+      type: object
+      required: [low, medium, high, critical]
+      properties:
+        low:
+          type: integer
+        medium:
+          type: integer
+        high:
+          type: integer
+        critical:
+          type: integer
+    StatusCounts:
+      type: object
+      required: [open, mitigating, resolved]
+      properties:
+        open:
+          type: integer
+        mitigating:
+          type: integer
+        resolved:
+          type: integer
+    DashboardSummary:
+      type: object
+      required:
+        [totalDocuments, totalRisks, risksBySeverity, risksByStatus, openActions, totalEvidence, verifiedEvidence, totalAssessments]
+      properties:
+        totalDocuments:
+          type: integer
+        totalRisks:
+          type: integer
+        risksBySeverity:
+          $ref: "#/components/schemas/SeverityCounts"
+        risksByStatus:
+          $ref: "#/components/schemas/StatusCounts"
+        openActions:
+          type: integer
+        totalEvidence:
+          type: integer
+        verifiedEvidence:
+          type: integer
+        totalAssessments:
+          type: integer
+    ActivityItem:
+      type: object
+      required: [id, type, message, createdAt, documentId, riskId]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [document_added, risk_identified, assessment_recorded]
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        documentId:
+          type: ["integer", "null"]
+        riskId:
+          type: ["integer", "null"]

@@ -1,0 +1,51 @@
+# VERISCOPE — PHASE 1: INSPECT AND ESTABLISH THE FOUNDATION
+
+You are the lead engineer for Veriscope, an AI-powered enterprise risk management platform built for a hackathon.
+
+## Constraints
+- Two team members, one computer.
+- Less than one day to deliver a reliable MVP.
+- Claude Code is the coding agent.
+- Relevant ECC skills may be available. Discover and use them only if they are actually installed and applicable.
+- Prioritize working functionality over architecture complexity or visual polish.
+
+## First: inspect the existing project
+Before editing anything:
+1. Inspect the repository structure, package files, existing code, database, environment configuration, and README.
+2. Identify what already works and what is incomplete.
+3. Check whether a stack, ORM, or database has already been selected.
+4. Preserve useful existing code. Do not recreate the project or replace working dependencies without a clear reason.
+5. Never print secret values from environment files.
+
+If the stack has not been selected, choose the simplest reliable stack suitable for the existing project. Prefer a lightweight persistent database. SQLite is acceptable for this MVP. Use Prisma only if it fits the selected stack and does not create unnecessary migration work. Do not add an ORM merely because a skill recommends it.
+
+## Product goal
+Veriscope must support this workflow:
+1. Upload a business document.
+2. Extract its real text.
+3. Analyze it with a real LLM provider.
+4. Identify risks and show evidence from the source document.
+5. Assign mitigation actions.
+6. Reassess new evidence and determine whether the risk is resolved.
+7. Keep an assessment history.
+
+## Implement in this phase
+- Establish or repair the application foundation.
+- Create the basic professional dashboard and navigation.
+- Create the persistent data model needed for documents, risks, assessments, and mitigation actions, if not already present.
+- Add a real backend health-check endpoint.
+- Connect the frontend to the backend.
+- Add clear loading, empty, and error states.
+- Provide working development and run instructions.
+
+Do not implement every feature in this phase. Establish a clean foundation for the next phases.
+
+## Engineering rules
+- Use existing project conventions where reasonable.
+- Keep changes small and understandable.
+- Do not hardcode API keys or secrets.
+- Do not fabricate API responses, analysis results, or success messages.
+- Avoid unnecessary dependencies, services, and infrastructure.
+- Use tests appropriate to the chosen stack.
+
+Run the relevant checks and start the application if possible. Report the files changed, commands run, actual test results, and remaining blockers. Do not claim success without verification.
