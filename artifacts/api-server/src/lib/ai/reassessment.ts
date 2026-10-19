@@ -1,18 +1,45 @@
 import { z } from "zod/v4";
 import { REASSESSMENT_OUTCOMES, EVIDENCE_TYPES } from "@workspace/db";
+import { QUOTE_SUPPORT_VALUES, type QuoteSupport } from "../evidence-review";
 import { MalformedAiOutputError, isTransientAiError, requestStructuredCompletion } from "./client";
 
+/** A conflict flag that was missing or not a boolean. The server treats it as "unknown", never as "no conflict". */
+export type ConflictFlag = boolean | "invalid";
+
+/**
+ * Strict validation of the two guardrail fields. A missing or malformed value is
+ * never defaulted to the safe-looking answer: it becomes "invalid", and the
+ * server rules then refuse to accept the AI's claim of progress.
+ */
+export function normalizeGuardrailFields(
+  rawSupport: unknown,
+  rawConflict: unknown,
+): { quoteSupport: QuoteSupport; conflictsWithEvidence: ConflictFlag } {
+  const support = z.enum(QUOTE_SUPPORT_VALUES).safeParse(rawSupport);
+  return {
+    quoteSupport: support.success ? support.data : "invalid",
+    conflictsWithEvidence: typeof rawConflict === "boolean" ? rawConflict : "invalid",
+  };
+}
+
 // Validation applied to the model response before anything is saved.
-export const AiReassessmentSchema = z.object({
-  outcome: z.enum(REASSESSMENT_OUTCOMES),
-  evidenceType: z.enum(EVIDENCE_TYPES),
-  explanation: z.string().trim().min(10).max(3000),
-  evidenceQuotes: z.array(z.string().trim().min(5).max(1000)).max(6),
-  requirementsMet: z.array(z.string().trim().min(3).max(500)).max(10),
-  remainingGaps: z.array(z.string().trim().min(3).max(500)).max(10),
-  nextSteps: z.array(z.string().trim().min(3).max(500)).max(10),
-  confidence: z.number().min(0).max(1),
-});
+export const AiReassessmentSchema = z
+  .object({
+    outcome: z.enum(REASSESSMENT_OUTCOMES),
+    evidenceType: z.enum(EVIDENCE_TYPES),
+    explanation: z.string().trim().min(10).max(3000),
+    evidenceQuotes: z.array(z.string().trim().min(5).max(1000)).max(6),
+    requirementsMet: z.array(z.string().trim().min(3).max(500)).max(10),
+    remainingGaps: z.array(z.string().trim().min(3).max(500)).max(10),
+    nextSteps: z.array(z.string().trim().min(3).max(500)).max(10),
+    confidence: z.number().min(0).max(1),
+    quoteSupport: z.unknown(),
+    conflictsWithEvidence: z.unknown(),
+  })
+  .transform(({ quoteSupport, conflictsWithEvidence, ...rest }) => ({
+    ...rest,
+    ...normalizeGuardrailFields(quoteSupport, conflictsWithEvidence),
+  }));
 export type AiReassessment = z.infer<typeof AiReassessmentSchema>;
 
 const str = { type: "string" };
@@ -29,6 +56,8 @@ const RESPONSE_JSON_SCHEMA = {
     "remainingGaps",
     "nextSteps",
     "confidence",
+    "quoteSupport",
+    "conflictsWithEvidence",
   ],
   properties: {
     outcome: { type: "string", enum: [...REASSESSMENT_OUTCOMES] },
@@ -39,6 +68,8 @@ const RESPONSE_JSON_SCHEMA = {
     remainingGaps: strList,
     nextSteps: strList,
     confidence: { type: "number" },
+    quoteSupport: { type: "string", enum: [...QUOTE_SUPPORT_VALUES] },
+    conflictsWithEvidence: { type: "boolean" },
   },
 };
 
@@ -65,6 +96,8 @@ EVALUATION RULES:
 - evidenceQuotes: 0-6 quotes copied EXACTLY, character for character, from <new_evidence> only (never from the original evidence): contiguous spans of one or two sentences. Do not paraphrase, merge passages, add ellipses or fix typos. Every quote is checked against the new document; unfound quotes cannot support resolution.
 - requirementsMet: what the evidence demonstrably satisfies (empty if nothing). remainingGaps: what is still missing or unproven (must be non-empty unless outcome is "resolved"). nextSteps: concrete actions to close the gaps or to confirm the result.
 - explanation: how the evidence relates to the original risk and why you chose the outcome.
+- quoteSupport: judge ONLY whether your evidenceQuotes, read on their own, establish the outcome you chose. "supports": the quotes themselves show it (for "resolved", that the control is in place and operating). "partial": they show only part of it, or you relied on facts outside the quotes. "does_not_support": they do not establish it. Be strict; a related topic is not support.
+- conflictsWithEvidence: true if anything in <new_evidence> contradicts itself on a point that matters to this risk (for example one statement says an agreement was signed and another says it was not), or contradicts the claim that the risk is addressed. If true, the outcome should be "needs_human_review" and the contradiction must be explained.
 - confidence: 0 to 1, your confidence in the outcome.`;
 
 export interface ReassessmentContext {

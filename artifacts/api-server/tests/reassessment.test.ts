@@ -15,6 +15,7 @@ vi.mock("../src/lib/ai/client", async (importOriginal) => {
 const { requestStructuredCompletion } = await import("../src/lib/ai/client");
 const { default: app } = await import("../src/app");
 const { applyReassessmentRules } = await import("../src/lib/reassessment-rules");
+const { parseReassessmentOutput } = await import("../src/lib/ai/reassessment");
 const mockLlm = vi.mocked(requestStructuredCompletion);
 
 process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"] ??= "http://unused.test";
@@ -61,6 +62,8 @@ async function setupRisk() {
           needsHumanReview: false,
           reviewNotes: null,
           matchesExistingRiskId: null,
+          quoteSupport: "supports",
+          supportGap: null,
         },
       ],
     }),
@@ -87,6 +90,8 @@ function aiReassessment(overrides: Record<string, unknown> = {}) {
     remainingGaps: [] as string[],
     nextSteps: ["Schedule quarterly generator tests"],
     confidence: 0.9,
+    quoteSupport: "supports",
+    conflictsWithEvidence: false,
     ...overrides,
   };
 }
@@ -413,7 +418,14 @@ describe("reassessment", () => {
 });
 
 describe("outcome rules", () => {
-  const base = { outcome: "resolved", evidenceType: "operating_evidence", remainingGaps: [], confidence: 0.9 } as const;
+  const base = {
+    outcome: "resolved",
+    evidenceType: "operating_evidence",
+    remainingGaps: [],
+    confidence: 0.9,
+    quoteSupport: "supports",
+    conflictsWithEvidence: false,
+  } as const;
   const run = (ai: Partial<typeof base> & Record<string, unknown>, total = 2, verified = 2) =>
     applyReassessmentRules({ ai: { ...base, ...ai } as never, quotesTotal: total, quotesVerified: verified }).verdict;
 
@@ -434,5 +446,170 @@ describe("outcome rules", () => {
     for (const outcome of ["partially_resolved", "unresolved", "needs_human_review"] as const) {
       expect(run({ outcome: outcome as never })).toBe(outcome);
     }
+  });
+});
+
+describe("reassessment guardrails: conflict and quote support", () => {
+  const base = {
+    outcome: "resolved",
+    evidenceType: "operating_evidence",
+    remainingGaps: [] as string[],
+    confidence: 0.9,
+    quoteSupport: "supports",
+    conflictsWithEvidence: false,
+  };
+  const apply = (ai: Record<string, unknown>, total = 2, verified = 2) =>
+    applyReassessmentRules({ ai: { ...base, ...ai } as never, quotesTotal: total, quotesVerified: verified });
+
+  it("downgrades resolved and partially resolved to needs_human_review when the evidence conflicts", () => {
+    for (const outcome of ["resolved", "partially_resolved"]) {
+      const r = apply({ outcome, conflictsWithEvidence: true, remainingGaps: outcome === "resolved" ? [] : ["gap"] });
+      expect(r.verdict).toBe("needs_human_review");
+      expect(r.notes.join(" ")).toMatch(/conflicting statements/);
+    }
+  });
+
+  it("treats a missing or malformed conflict flag as unknown, never as 'no conflict'", () => {
+    for (const conflictsWithEvidence of ["invalid", undefined]) {
+      const r = apply({ conflictsWithEvidence });
+      expect(r.verdict).toBe("needs_human_review");
+      expect(r.notes.join(" ")).toMatch(/did not give a valid answer/);
+    }
+  });
+
+  it("does not accept resolved unless quote support is exactly 'supports'", () => {
+    const notes: Record<string, RegExp> = {
+      partial: /only partly establish/,
+      does_not_support: /do not establish/,
+      invalid: /did not give a valid assessment/,
+    };
+    for (const [quoteSupport, re] of Object.entries(notes)) {
+      const r = apply({ quoteSupport });
+      expect(r.verdict, quoteSupport).toBe("needs_human_review");
+      expect(r.notes.join(" "), quoteSupport).toMatch(re);
+    }
+    const missing = apply({ quoteSupport: undefined });
+    expect(missing.verdict).toBe("needs_human_review");
+    expect(missing.notes.join(" ")).toMatch(/did not give a valid assessment/);
+    expect(apply({}).verdict).toBe("resolved");
+  });
+
+  it("leaves a weaker outcome alone: weak quote support does not touch partially_resolved", () => {
+    const r = apply({ outcome: "partially_resolved", remainingGaps: ["gap"], quoteSupport: "partial" });
+    expect(r).toEqual({ verdict: "partially_resolved", notes: [] });
+  });
+
+  it("no combination of guardrail inputs can upgrade a verdict", () => {
+    const progress = { resolved: 2, partially_resolved: 1, unresolved: 0, needs_human_review: 0 } as const;
+    const outcomes = ["resolved", "partially_resolved", "unresolved", "needs_human_review"] as const;
+    let checked = 0;
+    for (const outcome of outcomes)
+      for (const evidenceType of ["operating_evidence", "policy_or_design", "plan_or_promise", "unrelated", "mixed"])
+        for (const quoteSupport of ["supports", "partial", "does_not_support", "invalid", undefined])
+          for (const conflictsWithEvidence of [true, false, "invalid", undefined])
+            for (const [total, verified] of [[0, 0], [2, 1], [2, 2]])
+              for (const remainingGaps of [[], ["gap"]])
+                for (const confidence of [0.3, 0.9]) {
+                  const { verdict, notes } = apply(
+                    { outcome, evidenceType, quoteSupport, conflictsWithEvidence, remainingGaps, confidence },
+                    total,
+                    verified,
+                  );
+                  checked++;
+                  expect(progress[verdict]).toBeLessThanOrEqual(progress[outcome]);
+                  if (outcome === "unresolved" || outcome === "needs_human_review") expect(verdict).toBe(outcome);
+                  // Every change is explained.
+                  if (verdict !== outcome) expect(notes.length).toBeGreaterThan(0);
+                }
+    expect(checked).toBeGreaterThan(1000);
+  });
+});
+
+describe("parseReassessmentOutput: guardrail field validation", () => {
+  const valid = {
+    outcome: "resolved",
+    evidenceType: "operating_evidence",
+    explanation: "The signed agreement shows the control is in place.",
+    evidenceQuotes: ["The agreement was signed on 2 October 2026."],
+    requirementsMet: ["Signed DPA"],
+    remainingGaps: [],
+    nextSteps: ["Review annually"],
+    confidence: 0.9,
+  };
+  const parse = (extra: Record<string, unknown>) => parseReassessmentOutput(JSON.stringify({ ...valid, ...extra }));
+
+  it("keeps valid values", () => {
+    expect(parse({ quoteSupport: "supports", conflictsWithEvidence: false })).toMatchObject({
+      quoteSupport: "supports",
+      conflictsWithEvidence: false,
+    });
+    expect(parse({ quoteSupport: "partial", conflictsWithEvidence: true })).toMatchObject({
+      quoteSupport: "partial",
+      conflictsWithEvidence: true,
+    });
+  });
+
+  it("never defaults a missing or malformed value to a safe-looking answer", () => {
+    expect(parse({ conflictsWithEvidence: false })).toMatchObject({ quoteSupport: "invalid", conflictsWithEvidence: false });
+    expect(parse({ quoteSupport: "supports" })).toMatchObject({ quoteSupport: "supports", conflictsWithEvidence: "invalid" });
+    expect(parse({ quoteSupport: "yes", conflictsWithEvidence: "no" })).toMatchObject({
+      quoteSupport: "invalid",
+      conflictsWithEvidence: "invalid",
+    });
+    expect(parse({ quoteSupport: "supports", conflictsWithEvidence: "false" }).conflictsWithEvidence).toBe("invalid");
+    expect(parse({ quoteSupport: "supports", conflictsWithEvidence: 0 }).conflictsWithEvidence).toBe("invalid");
+    expect(parse({ quoteSupport: "supports", conflictsWithEvidence: null }).conflictsWithEvidence).toBe("invalid");
+  });
+});
+
+describe("reassessment guardrails end to end (mocked AI)", () => {
+  const A = "Procurement tracker, 1 October 2026: the data processing agreement with Northwind is signed and filed.";
+  const B = "Legal Operations, 8 October 2026: no countersigned data processing agreement has been received from Northwind.";
+
+  it("a mocked AI that says resolved despite conflicting evidence is downgraded, with its original verdict kept", async () => {
+    const { risk } = await setupRisk();
+    const { risk: after } = await reassess(
+      risk.id,
+      `${A}\n${B}`,
+      // Verified quote, operating evidence, no gaps, high confidence, and still wrong.
+      aiReassessment({ evidenceQuotes: [A], conflictsWithEvidence: true }),
+    );
+    const a = after.assessments[0];
+    expect(a).toMatchObject({ kind: "reassessment", aiVerdict: "resolved", verdict: "needs_human_review", decision: null });
+    expect(a.evidence.map((e: { verified: boolean }) => e.verified)).toEqual([true]);
+    expect(a.guardrailNotes.join(" ")).toMatch(/conflicting statements/);
+    expect(after.status).toBe("open");
+  });
+
+  it("resolved with partial or invalid quote support is downgraded; the AI's own verdict is preserved", async () => {
+    for (const [label, overrides, re] of [
+      ["partial", { quoteSupport: "partial" }, /only partly establish/],
+      ["does_not_support", { quoteSupport: "does_not_support" }, /do not establish/],
+      ["missing quoteSupport", { quoteSupport: undefined }, /did not give a valid assessment/],
+      ["unknown quoteSupport", { quoteSupport: "strong" }, /did not give a valid assessment/],
+    ] as const) {
+      const { risk } = await setupRisk();
+      const { risk: after } = await reassess(risk.id, A, aiReassessment({ evidenceQuotes: [A], ...overrides }));
+      const a = after.assessments[0];
+      expect(a, label).toMatchObject({ aiVerdict: "resolved", verdict: "needs_human_review" });
+      expect(a.guardrailNotes.join(" "), label).toMatch(re);
+      expect(after.status, label).toBe("open");
+    }
+  });
+
+  it("a missing or malformed conflict flag blocks resolution instead of being read as 'no conflict'", async () => {
+    for (const conflictsWithEvidence of [undefined, "false", null]) {
+      const { risk } = await setupRisk();
+      const { risk: after } = await reassess(risk.id, A, aiReassessment({ evidenceQuotes: [A], conflictsWithEvidence }));
+      expect(after.assessments[0], String(conflictsWithEvidence)).toMatchObject({ aiVerdict: "resolved", verdict: "needs_human_review" });
+      expect(after.assessments[0].guardrailNotes.join(" ")).toMatch(/did not give a valid answer/);
+    }
+  });
+
+  it("clean, supported, conflict-free operating evidence is still accepted as a recommendation (and the risk still stays open)", async () => {
+    const { risk } = await setupRisk();
+    const { risk: after } = await reassess(risk.id, A, aiReassessment({ evidenceQuotes: [A] }));
+    expect(after.assessments[0]).toMatchObject({ aiVerdict: "resolved", verdict: "resolved", guardrailNotes: [] });
+    expect(after.status).toBe("open");
   });
 });

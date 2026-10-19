@@ -58,6 +58,8 @@ function aiRisk(overrides: Record<string, unknown> = {}) {
     needsHumanReview: false,
     reviewNotes: null,
     matchesExistingRiskId: null,
+    quoteSupport: "supports",
+    supportGap: null,
     ...overrides,
   };
 }

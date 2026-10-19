@@ -1,0 +1,46 @@
+I approve a staged implementation of A and B, plus the associated regression tests. Keep C separate for now.
+
+## Stage 1 — Analysis evidence support (A)
+
+Implement the proposed `quoteSupport` and `supportGap` fields in the AI risk-analysis schema and prompt, and enforce them server-side in `reviewEvidence`.
+
+Requirements:
+- `quoteSupport` must be validated against the allowed enum values: `supports`, `partial`, `does_not_support`.
+- `supportGap` must be validated as string or null.
+- If `quoteSupport` is missing, malformed, or not `supports`, fail safely and require human review. Do not silently default a real model response to `supports`.
+- Keep deterministic exact-source quote verification. Do not treat exact text matching as semantic support.
+- Flag a `direct` label when the evidence actually consists of separate, non-adjacent passages, but inspect how quote locations are represented before implementing this rule. Avoid false positives caused by duplicate or overlapping quotes.
+- Preserve the existing evidence verification, review reasons, database schema, and API compatibility where possible.
+- Update test-only mock helpers to supply valid defaults explicitly, without weakening assertions.
+
+## Stage 2 — Reassessment guardrails (B)
+
+Implement `conflictsWithEvidence` and `quoteSupport` in the reassessment schema, prompt, and server-side rules.
+
+Requirements:
+- Validate both fields strictly.
+- If the conflict flag is true and the AI claims progress or resolution, downgrade the final outcome to `needs_human_review`.
+- If quote support is missing, malformed, `partial`, or `does_not_support`, do not accept `resolved`; downgrade it to `needs_human_review`.
+- Record clear `guardrailNotes` for every downgrade.
+- Preserve the original AI verdict separately from the guarded final verdict.
+- Ensure guardrails can downgrade an outcome but never upgrade a weaker outcome.
+- Do not change the existing human approval requirement for closing a risk.
+
+## Stage 3 — Regression tests
+
+Add tests for:
+- Unsupported and partially supported analysis quotes.
+- A supported single quote that should not be over-flagged.
+- Separate non-adjacent quotes incorrectly labeled `direct`.
+- A real server-side downgrade when mocked AI claims `resolved` despite conflicting evidence.
+- Missing or malformed new fields.
+- No guardrail path can upgrade a verdict.
+- Existing tests still pass without weakening or skipping assertions.
+
+Run the relevant test files, then the full suite against `veriscope_test`. Do not make real AI calls during this stage.
+
+## Stage 4 — Report and stop
+
+Do not implement C (`routes/risks.ts` transaction/isolation change) yet. Report the exact files changed, design decisions, tests and results, and any unresolved concerns. Do not commit, push, reset, rebase, rewrite history, change dependencies, delete demo data, or alter the Replit OpenAI integration.
+
+Stop and wait for my approval before real AI calls or any changes for Stage C.

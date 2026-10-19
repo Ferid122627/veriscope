@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import type { TextChunk } from "../chunking";
+import { QUOTE_SUPPORT_VALUES, type QuoteSupport } from "../evidence-review";
 import {
   MalformedAiOutputError,
   isTransientAiError,
@@ -18,25 +19,45 @@ export const RISK_CATEGORIES = [
   "Other",
 ] as const;
 
+const SupportGapSchema = z.string().trim().max(2000).nullable();
+
+/**
+ * Validate the model's self-assessment of quote support. A missing or malformed
+ * answer is never defaulted to "supports": it becomes "invalid", which the
+ * server treats as unsupported and sends the finding for human review.
+ */
+export function normalizeQuoteSupport(rawSupport: unknown, rawGap: unknown): { quoteSupport: QuoteSupport; supportGap: string | null } {
+  const support = z.enum(QUOTE_SUPPORT_VALUES).safeParse(rawSupport);
+  const gap = SupportGapSchema.safeParse(rawGap);
+  if (!support.success || !gap.success) return { quoteSupport: "invalid", supportGap: null };
+  return { quoteSupport: support.data, supportGap: gap.data === "" ? null : gap.data };
+}
+
 // Validation applied to every model response before anything is saved.
-export const AiRiskSchema = z.object({
-  title: z.string().trim().min(3).max(200),
-  description: z.string().trim().min(10).max(2000),
-  category: z.enum(RISK_CATEGORIES),
-  severity: z.enum(["low", "medium", "high", "critical"]),
-  likelihood: z.enum(["low", "medium", "high"]),
-  businessImpact: z.string().trim().min(3).max(2000),
-  recommendedMitigation: z.string().trim().min(3).max(2000),
-  // May be empty: a finding with no quotable support is kept and flagged for review.
-  evidenceQuotes: z.array(z.string().trim().min(5).max(1000)).max(4),
-  evidenceBasis: z.enum(["direct", "inferred", "none"]),
-  interpretationNote: z.string().trim().max(2000).nullable(),
-  rationale: z.string().trim().min(3).max(2000),
-  confidence: z.number().min(0).max(1),
-  needsHumanReview: z.boolean(),
-  reviewNotes: z.string().trim().max(2000).nullable(),
-  matchesExistingRiskId: z.number().int().nullable(),
-});
+export const AiRiskSchema = z
+  .object({
+    title: z.string().trim().min(3).max(200),
+    description: z.string().trim().min(10).max(2000),
+    category: z.enum(RISK_CATEGORIES),
+    severity: z.enum(["low", "medium", "high", "critical"]),
+    likelihood: z.enum(["low", "medium", "high"]),
+    businessImpact: z.string().trim().min(3).max(2000),
+    recommendedMitigation: z.string().trim().min(3).max(2000),
+    // May be empty: a finding with no quotable support is kept and flagged for review.
+    evidenceQuotes: z.array(z.string().trim().min(5).max(1000)).max(4),
+    evidenceBasis: z.enum(["direct", "inferred", "none"]),
+    interpretationNote: z.string().trim().max(2000).nullable(),
+    rationale: z.string().trim().min(3).max(2000),
+    confidence: z.number().min(0).max(1),
+    needsHumanReview: z.boolean(),
+    reviewNotes: z.string().trim().max(2000).nullable(),
+    matchesExistingRiskId: z.number().int().nullable(),
+    // Validated by normalizeQuoteSupport below, so one bad value flags a single
+    // finding for review instead of failing the whole run.
+    quoteSupport: z.unknown(),
+    supportGap: z.unknown(),
+  })
+  .transform(({ quoteSupport, supportGap, ...risk }) => ({ ...risk, ...normalizeQuoteSupport(quoteSupport, supportGap) }));
 export const AiAnalysisSchema = z.object({ risks: z.array(AiRiskSchema).max(25) });
 export type AiRisk = z.infer<typeof AiRiskSchema>;
 
@@ -68,6 +89,8 @@ const RESPONSE_JSON_SCHEMA = {
           "needsHumanReview",
           "reviewNotes",
           "matchesExistingRiskId",
+          "quoteSupport",
+          "supportGap",
         ],
         properties: {
           title: str,
@@ -85,6 +108,8 @@ const RESPONSE_JSON_SCHEMA = {
           needsHumanReview: { type: "boolean" },
           reviewNotes: { type: ["string", "null"] },
           matchesExistingRiskId: { type: ["integer", "null"] },
+          quoteSupport: { type: "string", enum: [...QUOTE_SUPPORT_VALUES] },
+          supportGap: { type: ["string", "null"] },
         },
       },
     },
@@ -105,6 +130,11 @@ ANALYSIS RULES:
   - "direct": the quoted text itself states the risk.
   - "inferred": the risk is your interpretation of several passages taken together. Quote each passage separately and explain the reasoning in interpretationNote.
   - "none": the risk follows from something the text does NOT say (e.g. a missing clause) so nothing can be quoted. evidenceQuotes must be [] and reviewNotes must explain. Never invent a quote to avoid this.
+- quoteSupport: judge ONLY whether the quoted text, read on its own, establishes the risk you describe in title and description. This is separate from quoting accurately.
+  - "supports": the quotes themselves state or clearly entail the whole risk.
+  - "partial": the quotes support only part of the risk, or the risk relies on assumptions or on facts outside the quotes.
+  - "does_not_support": the quotes do not establish the risk (or there are no quotes).
+  Be strict: do not choose "supports" because the topic is related. supportGap: when quoteSupport is not "supports", say what the quotes do not establish; otherwise null.
 - interpretationNote: required for "inferred" (how the passages combine into the risk); otherwise null.
 - needsHumanReview: true if the evidence is ambiguous, incomplete, or the finding depends on assumptions.
 - severity: impact if the risk occurs (low, medium, high, critical). likelihood: how likely it is given the text (low, medium, high).

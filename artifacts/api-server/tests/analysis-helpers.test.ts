@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { locateQuote, pageForOffset, verifyQuote } from "../src/lib/evidence-locator";
-import { reviewEvidence } from "../src/lib/evidence-review";
+import { countSeparatePassages, reviewEvidence } from "../src/lib/evidence-review";
 import { chunkText } from "../src/lib/chunking";
 import { effectiveBasis, mergeRisks } from "../src/lib/analysis-runner";
 import { parseAnalysisOutput } from "../src/lib/ai/risk-analysis";
@@ -57,7 +57,14 @@ describe("verifyQuote", () => {
 describe("reviewEvidence", () => {
   const found = { matchType: "exact", start: 0, end: 5, matchCount: 1, normalizations: [] } as const;
   const missing = { matchType: "not_found", start: null, end: null, matchCount: 0, normalizations: [] } as const;
-  const base = { basis: "direct" as const, interpretationNote: null, aiNeedsReview: false, confidence: 0.9 };
+  const base = {
+    basis: "direct" as const,
+    interpretationNote: null,
+    aiNeedsReview: false,
+    confidence: 0.9,
+    quoteSupport: "supports" as const,
+    supportGap: null,
+  };
 
   it("needs no review when every quotation is verified", () => {
     expect(reviewEvidence({ ...base, quotes: [found] })).toEqual({
@@ -127,6 +134,8 @@ describe("mergeRisks", () => {
     interpretationNote: null,
     needsHumanReview: false,
     matchesExistingRiskId: null,
+    quoteSupport: "supports" as const,
+    supportGap: null,
   };
   it("merges duplicates reported by overlapping sections", () => {
     const merged = mergeRisks([
@@ -162,5 +171,149 @@ describe("parseAnalysisOutput", () => {
   it("rejects non-JSON and schema violations", () => {
     expect(() => parseAnalysisOutput("nope")).toThrow(/not valid JSON/);
     expect(() => parseAnalysisOutput('{"risks":[{"title":"x"}]}')).toThrow(/expected format/);
+  });
+});
+
+describe("quote support (semantic) is separate from exact matching", () => {
+  const found = { matchType: "exact", start: 0, end: 5, matchCount: 1, normalizations: [] } as const;
+  const base = {
+    basis: "direct" as const,
+    interpretationNote: null,
+    aiNeedsReview: false,
+    confidence: 0.9,
+    quoteSupport: "supports" as const,
+    supportGap: null,
+  };
+
+  it("does not over-flag a single verified quote that the AI says supports the finding", () => {
+    expect(reviewEvidence({ ...base, quotes: [found], separatePassages: 1 })).toEqual({
+      evidenceStatus: "verified",
+      reviewRequired: false,
+      reviewReasons: [],
+    });
+  });
+
+  it("requires review for partial or missing support even though the quote is verified", () => {
+    const partial = reviewEvidence({ ...base, quoteSupport: "partial", supportGap: "It does not say who is affected.", quotes: [found] });
+    expect(partial).toMatchObject({ evidenceStatus: "verified", reviewRequired: true });
+    expect(partial.reviewReasons[0]).toMatch(/only partly supports.*who is affected/);
+
+    const none = reviewEvidence({ ...base, quoteSupport: "does_not_support", quotes: [found] });
+    expect(none).toMatchObject({ evidenceStatus: "verified", reviewRequired: true });
+    expect(none.reviewReasons[0]).toMatch(/does not support/);
+
+    const invalid = reviewEvidence({ ...base, quoteSupport: "invalid", quotes: [found] });
+    expect(invalid.reviewRequired).toBe(true);
+    expect(invalid.reviewReasons[0]).toMatch(/did not give a valid assessment/);
+  });
+
+  it("does not add a second reason when there are no quotes at all", () => {
+    const r = reviewEvidence({ ...base, basis: "none", quoteSupport: "does_not_support", quotes: [] });
+    expect(r.reviewReasons).toHaveLength(1);
+    expect(r.reviewReasons[0]).toMatch(/No supporting quotation/);
+  });
+
+  it("flags a direct label that rests on separate passages, but not an inferred one or a single passage", () => {
+    expect(reviewEvidence({ ...base, quotes: [found, found], separatePassages: 2 }).reviewReasons.join(" ")).toMatch(/2 separate passages/);
+    expect(reviewEvidence({ ...base, quotes: [found], separatePassages: 1 }).reviewRequired).toBe(false);
+    const inferred = reviewEvidence({ ...base, basis: "inferred", interpretationNote: "x", quotes: [found, found], separatePassages: 2 });
+    expect(inferred.reviewReasons.join(" ")).not.toMatch(/separate passages/);
+  });
+});
+
+describe("countSeparatePassages", () => {
+  const content = "First sentence. Second sentence.\nThird sentence.\n\nUnrelated paragraph. Another.\nLast line.";
+  const span = (text: string, matchCount = 1) => {
+    const start = content.indexOf(text);
+    return { matchType: "exact", start, end: start + text.length, matchCount, normalizations: [] } as const;
+  };
+  const missing = { matchType: "not_found", start: null, end: null, matchCount: 0, normalizations: [] } as const;
+
+  it("counts quotes separated by other text as separate passages", () => {
+    expect(countSeparatePassages(content, [span("First sentence."), span("Last line.")])).toBe(2);
+  });
+  it("treats consecutive sentences (whitespace only between them) as one passage", () => {
+    expect(countSeparatePassages(content, [span("First sentence."), span("Second sentence.")])).toBe(1);
+    expect(countSeparatePassages(content, [span("Second sentence."), span("Third sentence.")])).toBe(1);
+  });
+  it("treats overlapping or duplicate spans as one passage", () => {
+    expect(countSeparatePassages(content, [span("First sentence. Second sentence."), span("Second sentence.")])).toBe(1);
+    expect(countSeparatePassages(content, [span("First sentence."), span("First sentence.")])).toBe(1);
+  });
+  it("ignores quotes that were not found or whose location is ambiguous", () => {
+    expect(countSeparatePassages(content, [span("First sentence."), missing, span("Last line.", 2)])).toBe(1);
+    expect(countSeparatePassages(content, [])).toBe(0);
+  });
+});
+
+describe("parseAnalysisOutput: quoteSupport and supportGap validation", () => {
+  const risk = {
+    title: "Single approver",
+    description: "Refunds are approved by one person.",
+    category: "Operational",
+    severity: "high",
+    likelihood: "medium",
+    businessImpact: "Fraud could go undetected.",
+    recommendedMitigation: "Require dual approval.",
+    evidenceQuotes: ["Refunds are approved by one person."],
+    evidenceBasis: "direct",
+    interpretationNote: null,
+    rationale: "Stated directly.",
+    confidence: 0.9,
+    needsHumanReview: false,
+    reviewNotes: null,
+    matchesExistingRiskId: null,
+  };
+  const parse = (extra: Record<string, unknown>) => parseAnalysisOutput(JSON.stringify({ risks: [{ ...risk, ...extra }] }))[0]!;
+
+  it("keeps valid values", () => {
+    expect(parse({ quoteSupport: "supports", supportGap: null })).toMatchObject({ quoteSupport: "supports", supportGap: null });
+    expect(parse({ quoteSupport: "partial", supportGap: " Missing scope. " })).toMatchObject({
+      quoteSupport: "partial",
+      supportGap: "Missing scope.",
+    });
+    expect(parse({ quoteSupport: "does_not_support", supportGap: "Nothing stated." }).quoteSupport).toBe("does_not_support");
+  });
+
+  it("never defaults a missing or malformed value to supports", () => {
+    expect(parse({ supportGap: null }).quoteSupport).toBe("invalid"); // quoteSupport missing
+    expect(parse({ quoteSupport: "supports" }).quoteSupport).toBe("invalid"); // supportGap missing
+    expect(parse({ quoteSupport: "yes", supportGap: null }).quoteSupport).toBe("invalid");
+    expect(parse({ quoteSupport: "SUPPORTS", supportGap: null }).quoteSupport).toBe("invalid");
+    expect(parse({ quoteSupport: true, supportGap: null }).quoteSupport).toBe("invalid");
+    expect(parse({ quoteSupport: null, supportGap: null }).quoteSupport).toBe("invalid");
+    expect(parse({ quoteSupport: "supports", supportGap: 42 }).quoteSupport).toBe("invalid");
+  });
+});
+
+describe("mergeRisks keeps the weakest support claim", () => {
+  const base = {
+    description: "d".repeat(20),
+    category: "Operational" as const,
+    businessImpact: "impact",
+    recommendedMitigation: "mitigate",
+    rationale: "because",
+    reviewNotes: null,
+    evidenceBasis: "direct" as const,
+    interpretationNote: null,
+    needsHumanReview: false,
+    matchesExistingRiskId: null,
+    severity: "high" as const,
+    likelihood: "low" as const,
+    confidence: 0.8,
+    evidenceQuotes: ["a quote"],
+    title: "Same risk",
+  };
+  it("does not let a later 'supports' hide an earlier 'partial'", () => {
+    const merged = mergeRisks([
+      [{ ...base, quoteSupport: "partial", supportGap: "gap one" }],
+      [{ ...base, quoteSupport: "supports", supportGap: null }],
+    ]);
+    expect(merged[0]).toMatchObject({ quoteSupport: "partial", supportGap: "gap one" });
+    const worse = mergeRisks([
+      [{ ...base, quoteSupport: "supports", supportGap: null }],
+      [{ ...base, quoteSupport: "invalid", supportGap: null }],
+    ]);
+    expect(worse[0]!.quoteSupport).toBe("invalid");
   });
 });

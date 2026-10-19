@@ -78,6 +78,8 @@ function aiRisk(overrides: Record<string, unknown> = {}) {
     needsHumanReview: false,
     reviewNotes: null,
     matchesExistingRiskId: null,
+    quoteSupport: "supports",
+    supportGap: null,
     ...overrides,
   };
 }
@@ -227,6 +229,89 @@ describe("evidence verification", () => {
     expect(normalized.claimedQuote).toBe("The supplier's licence - valid until May - is not renewed.");
     expect(ambiguous).toMatchObject({ verified: true, matchCount: 2 });
     expect(risk.reviewReasons[0]).toMatch(/appears 2 times/);
+  });
+});
+
+describe("evidence support guardrails", () => {
+  const GENERATOR = "The data centre in Lisbon has no backup generator.";
+  const OUTAGES = "Power outages in the region lasted up to six hours last year.";
+  const ORDERS = "Customer orders are processed only in Lisbon.";
+
+  it("a verified exact quote that the AI says only partly supports the finding still needs review", async () => {
+    const id = await createDoc("partial support");
+    await analyze(id, [aiRisk({ quoteSupport: "partial", supportGap: "The quote does not say orders stop during an outage." })]);
+    const risk = await onlyRisk(id);
+    // Exact-source verification is unchanged...
+    expect(risk).toMatchObject({ evidenceStatus: "verified", verifiedEvidenceCount: 1 });
+    expect(risk.evidence[0]).toMatchObject({ verified: true, matchType: "exact" });
+    // ...but verbatim text is not treated as semantic support.
+    expect(risk.reviewRequired).toBe(true);
+    expect(risk.reviewReasons).toEqual([expect.stringMatching(/only partly supports this finding: The quote does not say orders stop/)]);
+  });
+
+  it("a verified quote that the AI says does not support the finding needs review", async () => {
+    const id = await createDoc("no support");
+    await analyze(id, [aiRisk({ evidenceQuotes: [OUTAGES], quoteSupport: "does_not_support", supportGap: "Outages say nothing about generators." })]);
+    const risk = await onlyRisk(id);
+    expect(risk).toMatchObject({ evidenceStatus: "verified", reviewRequired: true });
+    expect(risk.reviewReasons.join(" ")).toMatch(/does not support this finding: Outages say nothing/);
+  });
+
+  it("a supported single quote is not over-flagged", async () => {
+    const id = await createDoc("supported single quote");
+    await analyze(id, [aiRisk({ quoteSupport: "supports", supportGap: null })]);
+    expect(await onlyRisk(id)).toMatchObject({ evidenceStatus: "verified", reviewRequired: false, reviewReasons: [] });
+  });
+
+  it("a missing or malformed quoteSupport in a real model response is flagged, never treated as supports", async () => {
+    for (const [label, overrides] of [
+      ["missing quoteSupport", { quoteSupport: undefined }],
+      ["missing supportGap", { supportGap: undefined }],
+      ["unknown value", { quoteSupport: "mostly" }],
+      ["wrong type", { quoteSupport: true }],
+      ["malformed supportGap", { supportGap: 7 }],
+    ] as const) {
+      const id = await createDoc(label);
+      await analyze(id, [aiRisk(overrides)]);
+      const doc = (await request(app).get(`/api/documents/${id}`)).body;
+      expect(doc.status, label).toBe("analyzed");
+      const risk = await onlyRisk(id);
+      expect(risk.evidenceStatus, label).toBe("verified");
+      expect(risk.reviewRequired, label).toBe(true);
+      expect(risk.reviewReasons.join(" "), label).toMatch(/did not give a valid assessment/);
+    }
+  });
+
+  it("flags a direct label whose quotes come from separate, non-adjacent passages", async () => {
+    const id = await createDoc("separate passages");
+    await analyze(id, [aiRisk({ evidenceQuotes: [GENERATOR, ORDERS], evidenceBasis: "direct" })]);
+    const risk = await onlyRisk(id);
+    expect(risk).toMatchObject({ evidenceBasis: "direct", evidenceStatus: "verified", reviewRequired: true });
+    expect(risk.reviewReasons).toEqual([expect.stringMatching(/Labelled direct, but the quotations come from 2 separate passages/)]);
+  });
+
+  it("does not flag direct quotes that are consecutive, overlapping or repeated", async () => {
+    const adjacent = await createDoc("adjacent quotes");
+    await analyze(adjacent, [aiRisk({ evidenceQuotes: [GENERATOR, OUTAGES] })]);
+    expect(await onlyRisk(adjacent)).toMatchObject({ reviewRequired: false, reviewReasons: [], evidenceCount: 2 });
+
+    const overlapping = await createDoc("overlapping quotes");
+    await analyze(overlapping, [aiRisk({ evidenceQuotes: [`${GENERATOR}\n${OUTAGES}`, OUTAGES] })]);
+    expect(await onlyRisk(overlapping)).toMatchObject({ reviewRequired: false, reviewReasons: [] });
+
+    const repeated = await createDoc("repeated quotes");
+    await analyze(repeated, [aiRisk({ evidenceQuotes: [GENERATOR, GENERATOR] })]);
+    expect(await onlyRisk(repeated)).toMatchObject({ reviewRequired: false, reviewReasons: [], evidenceCount: 1 });
+  });
+
+  it("an inferred finding from separate passages gets only the interpretation reason", async () => {
+    const id = await createDoc("inferred separate passages");
+    await analyze(id, [
+      aiRisk({ evidenceBasis: "inferred", interpretationNote: "Combined, these imply a full stop.", evidenceQuotes: [GENERATOR, ORDERS] }),
+    ]);
+    const risk = await onlyRisk(id);
+    expect(risk.reviewReasons.join(" ")).not.toMatch(/separate passages/);
+    expect(risk.reviewReasons.join(" ")).toMatch(/interpretation of several passages/);
   });
 });
 

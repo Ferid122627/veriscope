@@ -13,7 +13,7 @@ import {
 import { chunkText, type TextChunk } from "./chunking";
 import { verifyQuote, pageForOffset, type QuoteVerification } from "./evidence-locator";
 import { analyzeChunk, type AiRisk, type ExistingRiskRef } from "./ai/risk-analysis";
-import { reviewEvidence, notDetectedReason, type EvidenceBasis } from "./evidence-review";
+import { countSeparatePassages, reviewEvidence, notDetectedReason, type EvidenceBasis, type QuoteSupport } from "./evidence-review";
 import {
   ANALYSIS_MODEL,
   AiNotConfiguredError,
@@ -100,6 +100,9 @@ export function titleKey(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+// When sections report the same risk, keep the weakest support claim.
+const SUPPORT_RANK: Record<QuoteSupport, number> = { supports: 0, partial: 1, does_not_support: 2, invalid: 3 };
+
 export type MergedRisk = AiRisk & { matchedRiskId: number | null };
 
 /**
@@ -131,6 +134,12 @@ export function mergeRisks(perChunk: AiRisk[][], existing: Pick<ExistingRiskRef,
     if (BASIS_RANK[risk.evidenceBasis] > BASIS_RANK[prev.evidenceBasis]) prev.evidenceBasis = risk.evidenceBasis;
     prev.interpretationNote ??= risk.interpretationNote;
     prev.reviewNotes ??= risk.reviewNotes;
+    if (SUPPORT_RANK[risk.quoteSupport] > SUPPORT_RANK[prev.quoteSupport]) {
+      prev.quoteSupport = risk.quoteSupport;
+      prev.supportGap = risk.supportGap;
+    } else if (risk.quoteSupport === prev.quoteSupport) {
+      prev.supportGap ??= risk.supportGap;
+    }
     prev.needsHumanReview ||= risk.needsHumanReview;
     prev.confidence = Math.max(prev.confidence, risk.confidence);
   }
@@ -219,6 +228,12 @@ async function runAnalysis(doc: DocumentRow, runId: number, chunks: TextChunk[],
           interpretationNote: r.interpretationNote,
           aiNeedsReview: r.needsHumanReview,
           confidence: r.confidence,
+          quoteSupport: r.quoteSupport,
+          supportGap: r.supportGap,
+          separatePassages: countSeparatePassages(
+            doc.content,
+            quotes.map((q) => q.result),
+          ),
         });
         const current = {
           description: r.description,

@@ -5,7 +5,10 @@ import type { AiReassessment } from "./ai/reassessment";
 export const MIN_RESOLUTION_CONFIDENCE = 0.6;
 
 export interface RuleInput {
-  ai: Pick<AiReassessment, "outcome" | "evidenceType" | "remainingGaps" | "confidence">;
+  ai: Pick<
+    AiReassessment,
+    "outcome" | "evidenceType" | "remainingGaps" | "confidence" | "quoteSupport" | "conflictsWithEvidence"
+  >;
   quotesTotal: number;
   quotesVerified: number;
 }
@@ -55,6 +58,25 @@ export function applyReassessmentRules({ ai, quotesTotal, quotesVerified }: Rule
   if (verdict === "resolved" && quotesVerified < quotesTotal) {
     verdict = "needs_human_review";
     notes.push(`${quotesTotal - quotesVerified} of ${quotesTotal} quotations could not be found in the new evidence document.`);
+  }
+  // Missing or malformed values reach here as "invalid" (or undefined) and are never treated as safe.
+  if (claimsProgress() && ai.conflictsWithEvidence !== false) {
+    verdict = "needs_human_review";
+    notes.push(
+      ai.conflictsWithEvidence === true
+        ? "The AI reported that the new evidence contains conflicting statements, so it cannot show progress without a human check."
+        : "The AI did not give a valid answer on whether the new evidence conflicts with itself, so progress cannot be accepted without a human check.",
+    );
+  }
+  if (verdict === "resolved" && ai.quoteSupport !== "supports") {
+    verdict = "needs_human_review";
+    notes.push(
+      ai.quoteSupport === "partial"
+        ? "The AI says the quoted passages only partly establish resolution."
+        : ai.quoteSupport === "does_not_support"
+          ? "The AI says the quoted passages do not establish resolution."
+          : "The AI did not give a valid assessment of whether the quoted passages establish resolution.",
+    );
   }
   if (verdict === "resolved" && ai.confidence < MIN_RESOLUTION_CONFIDENCE) {
     verdict = "needs_human_review";
