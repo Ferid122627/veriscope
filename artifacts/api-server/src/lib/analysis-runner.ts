@@ -38,7 +38,12 @@ export type StartResult =
  * The conditional UPDATE is the duplicate-submission guard: two concurrent
  * requests cannot both move a document into "analyzing".
  */
-export async function startAnalysis(documentId: number, rerun: boolean, log: Logger): Promise<StartResult> {
+export async function startAnalysis(
+  documentId: number,
+  rerun: boolean,
+  log: Logger,
+  useCompanyRules = false,
+): Promise<StartResult> {
   if (!isAiConfigured()) return { ok: false, status: 503, error: new AiNotConfiguredError().message };
 
   const [existing] = await db
@@ -77,7 +82,7 @@ export async function startAnalysis(documentId: number, rerun: boolean, log: Log
 
   // Snapshot of the company rules at the start, so a replacement uploaded
   // mid-run cannot mix two rule sets within one run.
-  const playbookRow = await getCurrentPlaybook();
+  const playbookRow = useCompanyRules ? await getCurrentPlaybook() : null;
   const playbook: PlaybookContext | null = playbookRow ? { title: playbookRow.title, content: playbookRow.content } : null;
   const [run] = await db
     .insert(analysisRunsTable)
@@ -387,7 +392,12 @@ async function runAnalysis(
         if (r.matchedRiskId !== null) {
           // Same issue as an existing risk: keep its id, title and human-set status.
           riskId = r.matchedRiskId;
-          await tx.update(risksTable).set({ ...current, updatedAt: new Date() }).where(eq(risksTable.id, riskId));
+          // A check without company rules must not erase the rule comparison of an earlier check.
+          const { playbookTitle: _t, playbookRuleQuote: _q, playbookRuleVerified: _v, playbookGap: _g, ...withoutRule } = current;
+          await tx
+            .update(risksTable)
+            .set({ ...(playbook ? current : withoutRule), updatedAt: new Date() })
+            .where(eq(risksTable.id, riskId));
         } else {
           const [row] = await tx
             .insert(risksTable)

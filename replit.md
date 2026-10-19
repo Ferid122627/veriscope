@@ -62,6 +62,10 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Compliance score (`lib/compliance-score.ts`, one source for the constants): 100 minus 18/12/7/2 per Critical/High/Medium/Low risk, floor 0. Closed and `unverified` (quote not found) risks are not counted; `no_evidence` (missing clause) risks are. Null until analyzed. List uses a SQL subquery; document detail returns the breakdown and overrides the score from the same rows.
 - `regulations` (GDPR, ISO 27001, ISO 9001, SOC 2, HIPAA, NIST, Local law, Azerbaijan law; max 3 from the AI, union ≤5 after merge) are "related areas to check", never violations. `suggestedClause` is a draft (UI: "Draft — have a lawyer review"), dropped by the server when the final severity is Low.
 
+- Login: own session auth (no Clerk). `users` table, scrypt password hashes, signed httpOnly cookie `veriscope_session` (7 days, HMAC with `SESSION_SECRET`). Everything under `/api` except `/healthz` and `/auth/*` needs a session (`middlewares/auth.ts`). Two template accounts are created on startup if missing: `user` / `user1234` (role user) and `company` / `company1234` (role company) — change or remove before a real deploy.
+- Roles: only `company` can use `/api/playbook` (403 otherwise) and only company checks use the company rules. Data (documents, risks) is shared by all users; for role `user` every response and the PDF blank the `playbook*` fields, and a user's re-check never erases rule data a company check stored.
+- Tests: `tests/setup.ts` mocks supertest so all requests carry a company session; `tests/auth.test.ts` uses the real supertest.
+
 ## Product
 
 - Phase 1 (done): data model, dashboard, documents (add by pasted text, view, delete), risk register and risk detail views, live system status (API / DB / AI provider).

@@ -58,6 +58,43 @@ export const DeletePlaybookResponse = zod.void()
 
 
 /**
+ * @summary Sign in with username and password
+ */
+export const LoginBody = zod.object({
+  "username": zod.string(),
+  "password": zod.string()
+})
+
+export const LoginResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "role": zod.enum(['user', 'company'])
+})
+})
+
+
+/**
+ * @summary Sign out
+ */
+export const LogoutResponse = zod.void()
+
+
+/**
+ * @summary The signed-in user
+ */
+export const GetMeResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "role": zod.enum(['user', 'company'])
+})
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

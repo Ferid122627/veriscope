@@ -6,3 +6,4 @@ export * from "./evidence";
 export * from "./mitigation-actions";
 export * from "./reassessments";
 export * from "./playbooks";
+export * from "./users";

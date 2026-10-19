@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, FileText, ShieldAlert, BookCheck } from "lucide-react";
-import { useGetSystemStatus, useHealthCheck } from "@workspace/api-client-react";
+import { LayoutGrid, FileText, ShieldAlert, BookCheck, LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetSystemStatus, useHealthCheck, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
+import type { AuthUser } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Overview", icon: LayoutGrid, testId: "link-nav-overview" },
   { href: "/documents", label: "Documents", icon: FileText, testId: "link-nav-documents" },
   { href: "/risks", label: "Risks to fix", icon: ShieldAlert, testId: "link-nav-risk-register" },
-  { href: "/playbook", label: "Company rules", icon: BookCheck, testId: "link-nav-playbook" },
+  { href: "/playbook", label: "Company rules", icon: BookCheck, testId: "link-nav-playbook", companyOnly: true },
 ];
 
 /** Veriscope logo: a lens with a check mark. The ring follows the text colour, the check uses the accent colour. */
@@ -44,7 +46,23 @@ function SystemStatus() {
   );
 }
 
-export function Shell({ children }: { children: ReactNode }) {
+function UserMenu({ user }: { user: AuthUser }) {
+  const qc = useQueryClient();
+  const logout = useLogout();
+  const out = () => logout.mutate(undefined, {
+    onSettled: () => { qc.clear(); qc.setQueryData(getGetMeQueryKey(), null); },
+  });
+  return (
+    <div className="flex items-center gap-2.5 text-[12.5px]" data-testid="user-menu">
+      <span className="text-sidebar-foreground/80"><span className="font-medium text-white" data-testid="text-user-name">{user.displayName}</span> · {user.role === "company" ? "Company" : "Normal"}</span>
+      <button onClick={out} disabled={logout.isPending} data-testid="button-logout" className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white focus-visible:outline-2 focus-visible:outline-sidebar-ring">
+        <LogOut className="size-3.5" aria-hidden />Sign out
+      </button>
+    </div>
+  );
+}
+
+export function Shell({ children, user }: { children: ReactNode; user: AuthUser }) {
   const [loc] = useLocation();
   const active = (h: string) => (h === "/" ? loc === "/" : loc.startsWith(h));
   return (
@@ -56,7 +74,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <span className="text-[15px] font-semibold tracking-[0.14em] text-white">VERISCOPE</span>
           </Link>
           <nav aria-label="Main" className="-mx-1 flex gap-1 overflow-x-auto px-1 max-md:order-last max-md:w-full">
-            {nav.map((n) => {
+            {nav.filter((n) => !n.companyOnly || user.role === "company").map((n) => {
               const on = active(n.href);
               return (
                 <Link key={n.href} href={n.href} data-testid={n.testId} aria-current={on ? "page" : undefined}
@@ -69,8 +87,9 @@ export function Shell({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
-          <div className="ml-auto hidden lg:block">
-            <SystemStatus />
+          <div className="ml-auto flex items-center gap-5">
+            <div className="hidden lg:block"><SystemStatus /></div>
+            <UserMenu user={user} />
           </div>
         </div>
       </header>

@@ -3,7 +3,7 @@ import { Link, useParams, useSearch } from "wouter";
 import { ShieldAlert, Crosshair, Sparkles, RotateCw, Loader2, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useGetDocument, useListRisks, useAnalyzeDocument, getGetDocumentQueryKey, getListRisksQueryKey,
+  useGetMe, getGetMeQueryKey, useGetDocument, useListRisks, useAnalyzeDocument, getGetDocumentQueryKey, getListRisksQueryKey,
 } from "@workspace/api-client-react";
 import type { DocumentDetail as Doc } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -21,6 +21,7 @@ function elapsed(from: string | null, now: number) {
 
 function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
   const analyze = useAnalyzeDocument();
+  const isCompany = useGetMe({ query: { queryKey: getGetMeQueryKey() } }).data?.user.role === "company";
   const qc = useQueryClient();
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -63,11 +64,11 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
       <div>
         <div className="text-[14px]" data-testid="text-analysis-summary"><b>{riskCount} {riskCount === 1 ? "risk" : "risks"} found</b> <span className="text-muted-foreground">· checked {doc.analyzedAt ? ago(doc.analyzedAt) : ""}</span></div>
         {doc.analysisModel && <div className="mt-0.5 text-[12px] text-muted-foreground">AI model: {doc.analysisModel}</div>}
-        <div className="mt-0.5 text-[12px] text-muted-foreground" data-testid="text-compared-rules">
+        {isCompany && <div className="mt-0.5 text-[12px] text-muted-foreground" data-testid="text-compared-rules">
           {doc.analysisRuns.find((r) => r.status === "completed")?.playbookTitle
             ? <>Compared with company rules: <Link href="/playbook" className="font-medium text-foreground underline underline-offset-4">{doc.analysisRuns.find((r) => r.status === "completed")!.playbookTitle}</Link></>
             : <>Not compared with company rules. <Link href="/playbook" className="underline underline-offset-4">Add company rules</Link></>}
-        </div>
+        </div>}
         {doc.compliance && <div className="mt-3"><ComplianceScoreCard c={doc.compliance} /></div>}
         {riskCount === 0 && <p className="mt-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-[13px]" data-testid="text-no-risks-found">Check complete. No clear risks were found in this document.</p>}
         <button className={`${btnGhost} mt-3 w-full`} disabled={busy} onClick={() => setConfirm(true)} data-testid="button-rerun-analysis"><RotateCw className="size-3.5" aria-hidden /> Check this document again</button>
@@ -107,7 +108,7 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
                 <div className="text-[12px] text-muted-foreground">{stamp(r.startedAt)}{r.finishedAt && ` → ${stamp(r.finishedAt)}`} · {r.model}</div>
                 {r.status === "failed" ? <div className="mt-0.5 break-words text-destructive">{r.error ?? "Failed without a reported reason."}</div>
                   : r.status === "completed" && <div className="mt-0.5 tabular">{r.risksIdentified ?? 0} found · {r.risksNew ?? 0} new · {r.risksMatched ?? 0} already known · {r.risksNotDetected ?? 0} not found again</div>}
-                {r.playbookTitle && <div className="mt-0.5 text-muted-foreground">Company rules: {r.playbookTitle}</div>}
+                {isCompany && r.playbookTitle && <div className="mt-0.5 text-muted-foreground">Company rules: {r.playbookTitle}</div>}
               </li>
             ))}
           </ol>

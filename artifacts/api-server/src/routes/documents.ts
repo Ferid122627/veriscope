@@ -27,6 +27,7 @@ import { receiveFile, uploadedFilename } from "../lib/upload";
 import { aiRateLimit } from "../lib/rate-limit";
 import { loadRiskDetail } from "./risks";
 import { buildDocumentReport } from "../lib/report-pdf";
+import { scrubCompanyFields } from "../middlewares/auth";
 import { computeCompliance } from "../lib/compliance-score";
 
 const router: IRouter = Router();
@@ -140,7 +141,7 @@ router.post("/documents/:id/analyze", aiRateLimit, async (req, res) => {
     res.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid input" });
     return;
   }
-  const result = await startAnalysis(params.data.id, body.data.rerun ?? false, req.log);
+  const result = await startAnalysis(params.data.id, body.data.rerun ?? false, req.log, req.user?.role === "company");
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });
     return;
@@ -187,7 +188,8 @@ router.get("/documents/:id/report.pdf", async (req, res) => {
     res.status(404).json({ error: "Document not found" });
     return;
   }
-  const pdf = await buildDocumentReport(data.doc, data.risks, data.compliance);
+  const risks = req.user?.role === "company" ? data.risks : (scrubCompanyFields(data.risks) as typeof data.risks);
+  const pdf = await buildDocumentReport(data.doc, risks, data.compliance);
   const base = data.doc.title.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="veriscope-report-${base}.pdf"`);

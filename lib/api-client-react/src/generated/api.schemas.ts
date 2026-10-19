@@ -5,6 +5,30 @@
  * Veriscope API — documents, risks, evidence, assessments, mitigation actions
  * OpenAPI spec version: 0.1.0
  */
+export type AuthUserRole = typeof AuthUserRole[keyof typeof AuthUserRole];
+
+
+export const AuthUserRole = {
+  user: 'user',
+  company: 'company',
+} as const;
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: AuthUserRole;
+}
+
+export interface AuthState {
+  user: AuthUser;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

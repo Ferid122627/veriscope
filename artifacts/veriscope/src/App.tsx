@@ -12,13 +12,17 @@ import Risks from '@/pages/risks';
 import RiskDetail from '@/pages/risk-detail';
 import Reassessment from '@/pages/reassessment';
 import Playbook from '@/pages/playbook';
+import Login from '@/pages/login';
+import { Loader2 } from 'lucide-react';
+import { useGetMe, getGetMeQueryKey } from '@workspace/api-client-react';
+import type { AuthUser } from '@workspace/api-client-react';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-function Router() {
+function Router({ user }: { user: AuthUser }) {
   return (
-    <Shell>
+    <Shell user={user}>
       <RoutedErrorBoundary>
         <Switch>
           <Route path="/" component={Overview} />
@@ -27,7 +31,7 @@ function Router() {
           <Route path="/risks" component={Risks} />
           <Route path="/risks/:id" component={RiskDetail} />
           <Route path="/risks/:id/reassessments/:assessmentId" component={Reassessment} />
-          <Route path="/playbook" component={Playbook} />
+          {user.role === 'company' && <Route path="/playbook" component={Playbook} />}
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>
@@ -40,12 +44,20 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+function AuthGate() {
+  const me = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: Infinity } });
+  if (me.isLoading) return <div className="grid min-h-[100dvh] place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" aria-label="Loading" /></div>;
+  const user = me.data?.user;
+  if (!user) return <Login />;
+  return <Router user={user} />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
+          <AuthGate />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

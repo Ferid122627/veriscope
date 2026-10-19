@@ -3,3 +3,4 @@
 - [Testing DB and AI guardrails](testing-and-guardrails.md) — veriscope_test DB, read-skew caveat, fail-safe validation of AI support/conflict fields
 - [UI design direction](ui-design-direction.md) — plain-language copy for business users, navy/teal tokens, sans UI + serif quotes, real-data-only closure steps
 - [Severity, eval suite, rate limit](severity-and-eval.md) — server-side severity caps, mocked-AI eval caveat, no auth yet, playbook vs quoteSupport
+- [Login and roles](auth-roles.md) — signed-cookie auth, 2 template users, shared data, company-rule fields scrubbed for normal users

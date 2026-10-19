@@ -8,6 +8,7 @@ servers:
   - url: /api
     description: Base API path
 tags:
+  - name: auth
   - name: health
     description: Health operations
   - name: documents
@@ -81,6 +82,56 @@ paths:
           description: Removed
         "404":
           description: No rules uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginCredentials"
+      responses:
+        "200":
+          description: Signed in; a session cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthState"
+        "401":
+          description: Wrong username or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204":
+          description: Signed out
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: The signed-in user
+      responses:
+        "200":
+          description: The current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthState"
+        "401":
+          description: Not signed in
           content:
             application/json:
               schema:
@@ -638,6 +689,25 @@ paths:
                   $ref: "#/components/schemas/ActivityItem"
 components:
   schemas:
+    AuthUser:
+      type: object
+      required: [id, username, displayName, role]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        displayName: { type: string }
+        role: { type: string, enum: [user, company] }
+    AuthState:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/AuthUser" }
+    LoginCredentials:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
     HealthStatus:
       type: object
       properties:
