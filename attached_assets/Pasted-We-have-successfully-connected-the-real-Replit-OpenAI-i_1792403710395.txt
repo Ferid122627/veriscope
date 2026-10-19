@@ -1,0 +1,26 @@
+We have successfully connected the real Replit OpenAI integration. Real document analysis and reassessment both work through the app. Do a focused reliability audit before any UI polish.
+
+### Known findings
+- Real analysis produced 7 risks from a sample PDF, with 9 source-verified quotes.
+- Risk #4, “Termination could cause an unsupported carrier transition,” was labeled `direct`, but its cited sentence did not support that claim.
+- Reassessment of risk #5 with a DPA evidence file returned `resolved`; the server correctly kept the risk open for human approval.
+- Conflicting, unrelated, and promise-only evidence files have not yet been tested against the real AI.
+- A rare consistency issue may occur when concurrent reads overlap a reassessment commit.
+- The automated suite passes 62/62 with mocked AI.
+- Replit AI usage consumes Replit credits.
+
+### Tasks
+1. Inspect the existing risk-analysis and evidence-validation implementation. Identify why a source quote can be an exact match but still fail to support the risk claim.
+2. Review the prompts, output schema, and server-side validation. Propose the smallest safe improvement that distinguishes:
+   - exact quote matching;
+   - whether the quote semantically supports the risk;
+   - whether the evidence is sufficient to resolve, partially resolve, contradict, or remain inconclusive.
+3. Inspect how uncertainty and human review are represented. Ensure the AI cannot silently bypass human closure controls.
+4. Review reassessment behavior for conflicting, unrelated, and promise-only evidence. Prefer mocked tests first. Do not make more real AI calls unless a specific gap cannot be evaluated without one.
+5. Inspect the possible consistency issue in `artifacts/api-server/routes/risks.ts`. Explain a minimal safe fix, but do not edit production code yet.
+6. Add or propose regression tests for unsupported risk claims and evidence outcomes, preserving all existing tests.
+7. Keep the existing Replit integration and environment variables intact. Do not print secrets.
+8. Do not delete the demo data, modify unrelated UI, install unrelated dependencies, commit, push, reset, or rewrite history.
+9. First report findings and a proposed minimal patch. **Do not edit production code until I approve the plan.** Do not proceed to UI polish.
+
+Separate verified facts from hypotheses, and report the relevant files and tests.
