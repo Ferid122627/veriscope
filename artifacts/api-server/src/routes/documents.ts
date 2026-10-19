@@ -9,6 +9,7 @@ import {
   CreateDocumentResponse,
   DeleteDocumentParams,
   GetDocumentParams,
+  GetDocumentReportParams,
   GetDocumentResponse,
   ListDocumentsResponse,
   UploadDocumentResponse,
@@ -24,6 +25,8 @@ import { documentSummaryColumns, toDocumentSummary } from "../lib/document-summa
 import { insertDocument } from "../lib/document-store";
 import { receiveFile, uploadedFilename } from "../lib/upload";
 import { aiRateLimit } from "../lib/rate-limit";
+import { loadRiskDetail } from "./risks";
+import { buildDocumentReport } from "../lib/report-pdf";
 
 const router: IRouter = Router();
 
@@ -147,6 +150,48 @@ router.post("/documents/:id/analyze", aiRateLimit, async (req, res) => {
     .where(eq(risksTable.documentId, params.data.id));
   const { content: _c, contentHash: _h, ...summary } = result.document;
   res.status(202).json(AnalyzeDocumentResponse.parse(toSummary({ ...summary, riskCount: count!.n })));
+});
+
+router.get("/documents/:id/report.pdf", async (req, res) => {
+  const params = GetDocumentReportParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid document id" });
+    return;
+  }
+  const id = params.data.id;
+  // One consistent snapshot so the report never mixes two analysis runs.
+  const data = await db.transaction(
+    async (tx) => {
+      const [doc] = await tx.select(selectSummary).from(documentsTable).where(eq(documentsTable.id, id));
+      if (!doc) return null;
+      const ids = await tx
+        .select({ id: risksTable.id })
+        .from(risksTable)
+        .where(eq(risksTable.documentId, id))
+        .orderBy(
+          sql`case ${risksTable.severity} when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end`,
+          desc(risksTable.updatedAt),
+          desc(risksTable.id),
+        );
+      const risks = [];
+      for (const r of ids) {
+        const detail = await loadRiskDetail(tx, r.id);
+        if (detail) risks.push(detail);
+      }
+      return { doc: toSummary(doc), risks };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+  if (!data) {
+    res.status(404).json({ error: "Document not found" });
+    return;
+  }
+  const pdf = await buildDocumentReport(data.doc, data.risks);
+  const base = data.doc.title.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="veriscope-report-${base}.pdf"`);
+  res.setHeader("Cache-Control", "no-store");
+  res.send(pdf);
 });
 
 router.get("/documents/:id", async (req, res) => {

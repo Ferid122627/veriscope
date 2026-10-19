@@ -40,6 +40,7 @@ AI-powered enterprise risk management: add business documents, identify risks ba
 - Assessments are append-only history (one row per AI judgement); risk `status` is the current state.
 - Dashboard activity is derived from real rows, not a separate event log.
 - Duplicate documents are blocked by a unique sha256 of the extracted text (409 with `existingDocumentId`).
+- PDF risk report: `GET /api/documents/:id/report.pdf` (pdfkit, built from one read-only snapshot). Fonts ship in `artifacts/api-server/assets/fonts`; `pdfkit` is external in `build.mjs` because it reads its own data files at runtime.
 - Upload limits: 10 MB file, 400,000 characters of text (rejected, never truncated). Type is checked by magic bytes as well as extension. Image-only PDFs are rejected with an explicit "no OCR" message.
 - Analysis runs in-process in the background: `POST /documents/:id/analyze` atomically claims the document (status → analyzing) so double submits get 409; the client polls the document. Documents left "analyzing" by a server restart are marked failed on startup.
 - Long text is split into ~24k-char overlapping sections (3 in parallel); duplicate risks across sections are merged by title. Progress = chunksDone/chunksTotal.

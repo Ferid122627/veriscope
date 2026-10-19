@@ -7,3 +7,4 @@ description: Isolated test DB, read-skew caveat, and how AI support/conflict fie
 - PDF parsing needs Node 24 (`Iterator` helpers); `.replit` pins nodejs-24.
 - AI `quoteSupport` / `conflictsWithEvidence` are validated by normalizing to "invalid" (never defaulted to a safe value); server only adds review reasons or downgrades verdicts.
 **Why:** a missing model field must never read as "supports" or "no conflict".
+- The `veriscope_test` DB does not survive a fresh import; recreate it (`create database veriscope_test`) and push the schema to it before running tests.

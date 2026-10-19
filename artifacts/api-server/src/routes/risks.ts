@@ -98,13 +98,13 @@ router.get("/risks", async (req, res) => {
   res.json(ListRisksResponse.parse(rows));
 });
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Everything the risk detail endpoint returns, read from one consistent snapshot.
  * Returns null when the risk does not exist.
  */
-async function loadRiskDetail(tx: Tx, id: number) {
+export async function loadRiskDetail(tx: Tx, id: number) {
   const [risk] = await tx
     .select(riskColumns)
     .from(risksTable)

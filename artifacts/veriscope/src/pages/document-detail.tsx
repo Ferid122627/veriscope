@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader, Panel, Skel, EmptyState, ErrorState, StatusChip, SeverityChip, DocStatus, Chip, BackLink, num, stamp, ago, fmtBytes, btnGhost, btnPrimary, apiErrorMessage } from "@/components/kit";
 import { useInvalidateAll } from "@/hooks/use-invalidate";
+import { ReportDownloadButton } from "@/components/report-download-button";
 
 function elapsed(from: string | null, now: number) {
   if (!from) return "";
@@ -259,7 +260,7 @@ export default function DocumentDetail() {
 
         {d && <div className="min-w-0 lg:col-start-1 lg:row-start-2"><AnalysisPanel doc={d} riskCount={risks.data?.length ?? d.riskCount} /></div>}
         <div className="relative min-h-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <Panel className="flex flex-col lg:absolute lg:inset-0" title="Risks found in this document" aside={risks.data && <span className="text-[12.5px] font-medium text-muted-foreground">{risks.data.length}</span>} bodyClass="p-0 max-h-[55vh] min-h-0 flex-1 overflow-auto lg:max-h-none">
+          <Panel className="flex flex-col lg:absolute lg:inset-0" title="Risks found in this document" aside={<span className="flex items-center gap-2.5">{risks.data && <span className="text-[12.5px] font-medium text-muted-foreground">{risks.data.length}</span>}{d && <ReportDownloadButton documentId={d.id} title={d.title} />}</span>} bodyClass="p-0 max-h-[55vh] min-h-0 flex-1 overflow-auto lg:max-h-none">
             {risks.isError ? <div className="p-4"><ErrorState error={risks.error} onRetry={() => risks.refetch()} /></div>
               : risks.isLoading ? <div className="space-y-3 p-4">{[0, 1, 2].map((i) => <Skel key={i} className="h-10" />)}</div>
               : !risks.data?.length ? <EmptyState testId="empty-document-risks" icon={<ShieldAlert className="size-5" />} title="No risks yet" body={d?.status === "analyzed" ? "Check complete. No clear risks were found in this document." : d?.status === "analyzing" ? "The AI is reading this document. Risks will appear here when it finishes." : "Select \"Find risks with AI\" to check this document."} />

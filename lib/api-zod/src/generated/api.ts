@@ -188,6 +188,16 @@ export const AnalyzeDocumentResponse = zod.object({
 
 
 /**
+ * @summary Download a PDF report of the document's risks, verified quotes, actions and closure history
+ */
+export const GetDocumentReportParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetDocumentReportResponse = zod.unknown()
+
+
+/**
  * @summary Get a document including its full text
  */
 export const GetDocumentParams = zod.object({

@@ -560,6 +560,83 @@ export const useAnalyzeDocument = <TError = ErrorType<ErrorResponse>,
       return useMutation(getAnalyzeDocumentMutationOptions(options));
     }
 
+export const getGetDocumentReportUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents/${id}/report.pdf`
+}
+
+/**
+ * @summary Download a PDF report of the document's risks, verified quotes, actions and closure history
+ */
+export const getDocumentReport = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDocumentReportUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDocumentReportQueryKey = (id: number,) => {
+    return [
+    `/api/documents/${id}/report.pdf`
+    ] as const;
+    }
+
+
+export const getGetDocumentReportQueryOptions = <TData = Awaited<ReturnType<typeof getDocumentReport>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDocumentReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDocumentReportQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDocumentReport>>> = ({ signal }) => getDocumentReport(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDocumentReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDocumentReportQueryResult = NonNullable<Awaited<ReturnType<typeof getDocumentReport>>>
+export type GetDocumentReportQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Download a PDF report of the document's risks, verified quotes, actions and closure history
+ */
+
+export function useGetDocumentReport<TData = Awaited<ReturnType<typeof getDocumentReport>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDocumentReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDocumentReportQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetDocumentUrl = (id: number,) => {
 
 
