@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, isPast, parseISO } from "date-fns";
-import { Plus, Pencil, Trash2, Loader2, ListTodo, UploadCloud, FileText, X, ArrowRight, Info, ShieldCheck, AlertTriangle, ScaleIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ListTodo, UploadCloud, FileText, X, ArrowRight, Info, ShieldCheck, AlertTriangle, ScaleIcon, Check } from "lucide-react";
 import {
   useGetRisk, useListDocuments, useCreateAction, useUpdateAction, useDeleteAction, useRequestReassessment,
   useDecideAssessment, useChangeRiskStatus, getGetRiskQueryKey, getListDocumentsQueryKey,
@@ -157,7 +157,7 @@ function ActionRow({ a, riskId }: { a: MitigationAction; riskId: number }) {
       <AlertDialog open={confirmDel} onOpenChange={(o) => !del.isPending && setConfirmDel(o)}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-normal">Delete this action?</AlertDialogTitle>
+            <AlertDialogTitle className="font-serif text-xl font-semibold tracking-tight">Delete this action?</AlertDialogTitle>
             <AlertDialogDescription>"{a.description}" will be removed from this risk. This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -264,7 +264,7 @@ export function ReassessPanel({ risk }: { risk: RiskDetail }) {
         </div>
       )}
       {latest?.status === "completed" && latest.assessmentId != null && (
-        <Link href={`/risks/${risk.id}/reassessments/${latest.assessmentId}`} data-testid="link-latest-comparison" className="mb-3 flex items-center justify-between rounded-sm border border-foreground/20 bg-accent/25 px-3 py-2 text-[13px] hover:bg-accent/40">
+        <Link href={`/risks/${risk.id}/reassessments/${latest.assessmentId}`} data-testid="link-latest-comparison" className="mb-3 flex items-center justify-between rounded-sm border border-accent/30 bg-accent/10 px-3 py-2 text-[13px] hover:bg-accent/15">
           <span>Latest reassessment complete · {latest.evidenceDocumentTitle}</span><span className="inline-flex items-center gap-1 font-medium">Compare <ArrowRight className="size-3.5" /></span>
         </Link>
       )}
@@ -388,7 +388,7 @@ export function CloseRiskDialog({ risk, open, onOpenChange, assessmentId, verdic
     <Dialog open={open} onOpenChange={(o) => !change.isPending && onOpenChange(o)}>
       <DialogContent className="max-w-lg bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl font-normal">Close this risk</DialogTitle>
+          <DialogTitle className="font-serif text-xl font-semibold tracking-tight">Close this risk</DialogTitle>
           <DialogDescription>Closing is a human decision and is recorded permanently in the status history.{assessmentId != null ? ` It will be linked to reassessment #${assessmentId}.` : " No reassessment will be linked."}</DialogDescription>
         </DialogHeader>
         {assessmentId != null && verdict !== "resolved" && (
@@ -424,6 +424,49 @@ export function CloseRiskDialog({ risk, open, onOpenChange, assessmentId, verdic
 
 export function latestReassessment(risk: RiskDetail) {
   return [...risk.assessments].filter((a) => a.kind === "reassessment").sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0] ?? null;
+}
+
+type StepState = "done" | "current" | "todo";
+
+/** Where this risk stands in the evidence → AI recommendation → human decision → closure path. Derived only from recorded data. */
+export function ClosureProgress({ risk }: { risk: RiskDetail }) {
+  const latest = latestReassessment(risk);
+  const req = risk.reassessmentRequests[0];
+  const closed = risk.status === "closed";
+  const hasEvidence = risk.reassessmentRequests.length > 0 || latest != null;
+  const steps: { t: string; d: React.ReactNode; s: StepState }[] = [
+    { t: "Submit new evidence", d: hasEvidence ? (req?.evidenceDocumentTitle ?? latest?.evidenceDocumentTitle ?? "Evidence submitted") : "Upload proof that the mitigation is in place.", s: hasEvidence ? "done" : "current" },
+    {
+      t: "AI reassessment",
+      d: req?.status === "pending" ? "Evaluating evidence…" : req?.status === "failed" && !latest ? "Last attempt failed. Nothing was changed." : latest ? <>Recommends <b>{verdictLabel[latest.verdict]}</b> · <Link href={`/risks/${risk.id}/reassessments/${latest.id}`} className="underline underline-offset-4" data-testid="link-progress-reassessment">#{latest.id}</Link></> : "Recommendation only. Never changes status.",
+      s: req?.status === "pending" ? "current" : latest ? "done" : hasEvidence ? "current" : "todo",
+    },
+    {
+      t: "Human review of recommendation",
+      d: latest?.decision ? `${latest.decision === "accepted" ? "Accepted" : "Rejected"} by ${latest.decidedBy ?? "unknown"}` : latest ? <Link href={`/risks/${risk.id}/reassessments/${latest.id}`} className="underline underline-offset-4" data-testid="link-progress-review">Awaiting a decision</Link> : "A named person accepts or rejects it.",
+      s: latest?.decision ? "done" : latest ? "current" : "todo",
+    },
+    { t: "Approved closure", d: closed ? "Risk closed with a written justification." : "Requires explicit approval and justification.", s: closed ? "done" : latest?.decision ? "current" : "todo" },
+  ];
+  return (
+    <Panel title="Path to closure">
+      <ol className="space-y-0" data-testid="list-closure-progress">
+        {steps.map((st, i) => (
+          <li key={st.t} className="relative flex gap-3 pb-3.5 last:pb-0" data-testid={`step-closure-${i + 1}`} data-state={st.s}>
+            {i < steps.length - 1 && <span className={cn("absolute left-[11px] top-6 bottom-0 w-px", st.s === "done" ? "bg-accent/50" : "bg-border")} />}
+            <span className={cn("relative grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+              st.s === "done" ? "border-accent bg-accent text-accent-foreground" : st.s === "current" ? "border-accent bg-card text-accent ring-2 ring-accent/20" : "border-border bg-card text-muted-foreground")}>
+              {st.s === "done" ? <Check className="size-3.5" /> : i + 1}
+            </span>
+            <div className="min-w-0 pt-0.5">
+              <div className={cn("text-[13px] font-medium", st.s === "todo" && "text-muted-foreground")}>{st.t}</div>
+              <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{st.d}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Panel>
+  );
 }
 
 export function StatusControl({ risk }: { risk: RiskDetail }) {
@@ -472,7 +515,14 @@ export function StatusControl({ risk }: { risk: RiskDetail }) {
           </div>
         </form>
       )}
-      <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">Status changes only through a recorded human decision. Closing requires approval and a written justification{latest ? `, and will be linked to the latest reassessment (#${latest.id})` : ""}.</p>
+      {risk.status !== "closed" && (
+        <div className="mt-3 rounded-sm border border-border bg-muted/40 px-3 py-2 text-[12px]" data-testid="text-closure-link">
+          {latest
+            ? <>Closing will be linked to reassessment <Link href={`/risks/${risk.id}/reassessments/${latest.id}`} className="font-medium underline underline-offset-4">#{latest.id}</Link> · AI recommendation: <b>{verdictLabel[latest.verdict]}</b>{latest.decision ? ` · ${latest.decision} by ${latest.decidedBy ?? "unknown"}` : " · no human decision yet"}</>
+            : "No reassessment yet. Closing would not be linked to any evidence review."}
+        </div>
+      )}
+      <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">Status changes only through a recorded human decision. Closing requires explicit approval and a written justification{latest ? `, and will be linked to the latest reassessment (#${latest.id})` : ""}.</p>
       <CloseRiskDialog risk={risk} open={closing} onOpenChange={setClosing} assessmentId={latest?.id ?? null} verdict={latest?.verdict ?? null} />
     </Panel>
   );

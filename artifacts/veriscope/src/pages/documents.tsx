@@ -37,8 +37,8 @@ export default function Documents() {
       </PageHeader>
 
       {docs.isError ? <ErrorState error={docs.error} onRetry={() => docs.refetch()} /> : (
-        <div className="overflow-hidden rounded-md border border-card-border bg-card rise">
-          <div className="hidden grid-cols-[1fr_110px_90px_80px_120px_40px] gap-4 border-b border-border px-4 py-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground md:grid">
+        <div className="overflow-hidden rounded-md border border-card-border bg-card shadow-sm rise">
+          <div className="hidden grid-cols-[1fr_230px_90px_80px_120px_40px] gap-x-4 border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:grid">
             <span>Title</span><span>Status</span><span className="text-right">Chars</span><span className="text-right">Risks</span><span>Added</span><span />
           </div>
           {docs.isLoading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="border-b border-border px-4 py-3.5 last:border-0"><Skel className="h-4 w-2/3" /></div>)
@@ -69,7 +69,7 @@ export default function Documents() {
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-normal">Delete this document?</AlertDialogTitle>
+            <AlertDialogTitle className="font-serif text-xl font-semibold tracking-tight">Delete this document?</AlertDialogTitle>
             <AlertDialogDescription>"{pending?.title}" will be removed along with every risk, evidence quote, action and assessment derived from it. This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -106,7 +106,7 @@ function AnalysisPanel({ doc, riskCount }: { doc: Doc; riskCount: number }) {
       <AlertDialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-xl font-normal">Re-run analysis?</AlertDialogTitle>
+            <AlertDialogTitle className="font-serif text-xl font-semibold tracking-tight">Re-run analysis?</AlertDialogTitle>
             <AlertDialogDescription>Nothing is deleted. Findings that match existing risks keep their IDs and get a new re-analysis assessment appended to their history. New issues become new risks. Existing risks not found again are kept, marked "not detected", and flagged for human review.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -211,15 +211,15 @@ export default function DocumentDetail() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           {range && (
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-sm border border-foreground/15 bg-accent/30 px-3 py-2 text-xs" data-testid="banner-highlight">
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-sm border border-accent/25 bg-accent/10 px-3 py-2 text-xs" data-testid="banner-highlight">
               <span className="flex items-center gap-2"><Crosshair className="size-3.5" /> Highlighting characters <span className="font-mono">{range.s}–{range.e}</span></span>
               <Link href={`/documents/${id}`} className="font-mono uppercase tracking-wider underline-offset-4 hover:underline" data-testid="link-clear-highlight">Clear</Link>
             </div>
           )}
           <article className="rounded-md border border-card-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-5 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground"><span>Source text</span><span>verbatim</span></div>
+            <div className="flex items-center justify-between border-b border-border px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><span>Source text</span><span>verbatim</span></div>
             {doc.isLoading ? <div className="space-y-2.5 p-6">{Array.from({ length: 12 }).map((_, i) => <Skel key={i} className="h-3.5" />)}</div> : (
-              <div data-testid="text-document-content" className="max-h-[75vh] overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.75] text-foreground/90">
+              <div data-testid="text-document-content" className="max-h-[75vh] overflow-auto px-5 py-6 md:px-8 whitespace-pre-wrap break-words font-quote text-[16px] leading-[1.75] text-foreground/90">
                 {rendered}
               </div>
             )}

@@ -1,3 +1,4 @@
 - [Package firewall 403s](package-firewall.md) — CVE-flagged package versions are blocked at install; pin the patched version via pnpm overrides.
 - [Stack & delivery decisions](stack-decisions.md) — Postgres+Drizzle over SQLite/Prisma, OpenAI via lazy SDK client, the 10 ECC skills, phase briefs
 - [Testing DB and AI guardrails](testing-and-guardrails.md) — veriscope_test DB, read-skew caveat, fail-safe validation of AI support/conflict fields
+- [UI design direction](ui-design-direction.md) — navy/white/teal tokens, sans headings + serif quotes, closure steps derived from real data only

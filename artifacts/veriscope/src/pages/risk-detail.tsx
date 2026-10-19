@@ -4,7 +4,7 @@ import { ArrowLeft, ShieldAlert, BadgeCheck, MessageSquareWarning, Briefcase, Ci
 import type { Evidence, Assessment, AssessmentKind, EvidenceBasis } from "@workspace/api-client-react";
 import { PageHeader, Panel, Skel, EmptyState, ErrorState, SeverityChip, StatusChip, Chip, EvidenceStatusBadge, stamp, riskCode, btnGhost, verdictStyle, verdictLabel } from "@/components/kit";
 import { cn } from "@/lib/utils";
-import { useRiskQuery, ActionsSection, ReassessPanel, StatusControl, StatusHistory } from "@/components/risk-workflow";
+import { useRiskQuery, ActionsSection, ReassessPanel, StatusControl, StatusHistory, ClosureProgress } from "@/components/risk-workflow";
 
 export const kindLabel: Record<AssessmentKind, string> = { initial: "Initial", reanalysis: "Re-analysis", reassessment: "Reassessment" };
 const basisLabel: Record<EvidenceBasis, string> = {
@@ -22,23 +22,23 @@ export function EvidenceItem({ e, compact }: { e: Evidence; compact?: boolean })
     <figure className={cn("group", compact ? "py-2" : "border-b border-border px-4 py-4 last:border-0")} data-testid={`card-evidence-${e.id}`}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         {isVerified
-          ? <Chip className="border-foreground/20 bg-accent text-accent-foreground" testId={`status-evidence-${e.id}`}><BadgeCheck className="size-3" />{e.matchType === "exact" ? "Verified exact match" : "Verified after normalization"}</Chip>
+          ? <Chip className="border-accent/35 bg-accent/10 text-accent" testId={`status-evidence-${e.id}`}><BadgeCheck className="size-3" />{e.matchType === "exact" ? "Verified exact match" : "Verified after normalization"}</Chip>
           : <Chip className="border-dashed border-destructive/60 bg-destructive/5 text-destructive" testId={`status-evidence-${e.id}`}><CircleAlert className="size-3" />Not found in source</Chip>}
         <Link href={href} data-testid={`link-evidence-${e.id}`} className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground hover:text-foreground">
           {e.pageNumber != null && `p. ${e.pageNumber} · `}{located ? `chars ${e.startOffset}–${e.endOffset}` : "open source"}<ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
       {isVerified ? (
-        <blockquote className={cn("border-l-2 border-accent pl-4 font-serif italic leading-relaxed text-foreground", compact ? "text-[14px]" : "text-[16px]")}>"{e.quote}"</blockquote>
+        <blockquote className={cn("border-l-2 border-accent pl-4 font-quote italic leading-relaxed text-foreground", compact ? "text-[14px]" : "text-[16px]")}>"{e.quote}"</blockquote>
       ) : (
         <>
-          <blockquote className={cn("border-l-2 border-dashed border-destructive/60 pl-4 font-serif italic leading-relaxed text-foreground/60 line-through decoration-destructive/50", compact ? "text-[14px]" : "text-[16px]")}>"{e.claimedQuote ?? e.quote}"</blockquote>
+          <blockquote className={cn("border-l-2 border-dashed border-destructive/60 pl-4 font-quote italic leading-relaxed text-foreground/60 line-through decoration-destructive/50", compact ? "text-[14px]" : "text-[16px]")}>"{e.claimedQuote ?? e.quote}"</blockquote>
           <div className="mt-1.5 pl-4 text-[12px] font-medium text-destructive">Not found in the source document — do not rely on this quotation.</div>
         </>
       )}
       <div className="mt-2 space-y-0.5 pl-4 font-mono text-[10.5px] text-muted-foreground">
         {isVerified && e.matchType === "normalized" && e.normalizations.length > 0 && <div data-testid={`text-normalized-${e.id}`}>Normalized: {e.normalizations.join(", ")}</div>}
-        {isVerified && claimDiffers && <div>AI quoted: <span className="font-serif text-[12px] italic">"{e.claimedQuote}"</span></div>}
+        {isVerified && claimDiffers && <div>AI quoted: <span className="font-quote text-[12px] italic">"{e.claimedQuote}"</span></div>}
         {e.matchCount > 1 && <div className="text-[hsl(28_85%_36%)]" data-testid={`text-ambiguous-${e.id}`}>Appears {e.matchCount} times in the document — location ambiguous</div>}
         {!compact && <div>{e.documentTitle}</div>}
       </div>
@@ -118,8 +118,8 @@ export default function RiskDetail() {
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-sm border border-border bg-card px-4 py-3 rise">
           <FileText className="size-4 text-muted-foreground" />
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground">Source document</span>
-          <Link href={`/documents/${r.documentId}`} data-testid="link-source-document" className="font-serif text-[17px] underline decoration-accent decoration-2 underline-offset-4 hover:decoration-foreground">{src?.title ?? r.documentTitle}</Link>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Source document</span>
+          <Link href={`/documents/${r.documentId}`} data-testid="link-source-document" className="text-[15px] font-medium underline decoration-accent decoration-2 underline-offset-4 hover:decoration-foreground">{src?.title ?? r.documentTitle}</Link>
           {src && <span className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
             <Chip className="border-border text-muted-foreground">{src.sourceType}</Chip>
             {src.filename && <span>{src.filename}</span>}
@@ -141,12 +141,12 @@ export default function RiskDetail() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <div className="space-y-6 min-w-0">
-            <p className="font-serif text-[18px] leading-relaxed text-foreground/90 rise" data-testid="text-risk-description">{r.description}</p>
+            <p className="text-[17px] leading-relaxed text-foreground rise" data-testid="text-risk-description">{r.description}</p>
 
             {r.reviewNotes && (
               <div className="flex gap-3 rounded-sm border border-dashed border-[hsl(28_85%_52%/0.6)] bg-[hsl(28_85%_52%/0.06)] px-4 py-3" data-testid="text-review-notes">
                 <MessageSquareWarning className="mt-0.5 size-4 shrink-0 text-[hsl(28_85%_40%)]" />
-                <div><div className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-[hsl(28_85%_36%)]">Reviewer notes · uncertainty</div><p className="mt-1 text-[13.5px] leading-relaxed">{r.reviewNotes}</p></div>
+                <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[hsl(28_85%_36%)]">Reviewer notes · uncertainty</div><p className="mt-1 text-[13.5px] leading-relaxed">{r.reviewNotes}</p></div>
               </div>
             )}
 
@@ -178,6 +178,7 @@ export default function RiskDetail() {
           </div>
 
           <div className="space-y-6 self-start">
+          <ClosureProgress risk={r} />
           <StatusControl risk={r} />
           <ReassessPanel risk={r} />
           <Panel title="Assessment history" aside={<History className="size-3.5 text-muted-foreground" />}>

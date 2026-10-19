@@ -1,0 +1,111 @@
+# Veriscope — UI Polish + Hackathon Demo Readiness
+
+You are continuing work on the existing Veriscope project. The backend and core workflow have already been tested. Your task is to make the existing product feel polished, professional, coherent, and ready for a live hackathon demonstration.
+
+## Current verified state
+
+- The full automated test suite previously passed: 93/93 tests.
+- Typechecking previously passed for all four packages.
+- PDF/DOCX ingestion, source-grounded risk analysis, evidence verification, reassessment, human approval, and consistent risk-detail reads have been verified.
+- The Replit OpenAI integration has already completed real analysis and reassessment calls.
+- Synthetic assessments #11 and #12 were removed from risk #5 only. The database now contains 3 documents, 9 risks, and 10 assessments. All risks remain open.
+- Risk #5 now references assessment #10, the real executed-DPA reassessment with a `resolved` verdict.
+- No code changes were made during that cleanup.
+- Preserve the existing backend, guardrails, demo data, and all user work.
+
+## Primary goal
+
+Improve the visual design and user experience without compromising working functionality.
+
+The product should look like a credible enterprise risk management platform, not a generic AI dashboard or a static prototype.
+
+## 1. Design direction
+
+Use a restrained, professional enterprise design:
+
+- Navy and white as the primary palette.
+- Teal as a restrained accent for meaningful highlights.
+- Clear typography, spacing, alignment, and visual hierarchy.
+- Consistent border radii, shadows, buttons, badges, and form controls.
+- Accessible contrast and readable text.
+- Responsive layouts for desktop and smaller screens.
+- Avoid excessive gradients, neon colors, unnecessary animations, oversized cards, and decorative AI-themed graphics.
+
+Inspect the existing design system and reuse its patterns where practical. Do not introduce a second, inconsistent design system.
+
+## 2. Prioritize the main demo workflow
+
+Inspect the existing routes, components, and screenshots before making changes. Then polish these areas in order:
+
+### A. Main dashboard
+- Make the overall risk situation immediately understandable.
+- Present existing risk metrics clearly and consistently with actual backend data.
+- Improve spacing, hierarchy, and the visual distinction between high-priority items and ordinary information.
+- Do not invent statistics or add decorative metrics that do not come from real data.
+
+### B. Risk register
+- Improve table readability, row spacing, column alignment, and responsive behavior.
+- Make risk severity, status, ownership, and review-needed indicators easy to scan.
+- Keep filters, sorting, navigation, and other existing behavior working.
+
+### C. Risk detail and evidence
+- Make the risk description, severity, status, source excerpts, verification results, and review warnings easy to understand.
+- Clearly distinguish verified evidence from partial, unsupported, or review-required findings.
+- Ensure source excerpts are readable and their source document/page context is visible when available.
+- Improve the assessment history so users can understand how a risk evolved over time.
+
+### D. Reassessment and closure workflow
+- Make the workflow intuitive: add evidence, reassess, review the result, and request human approval to close.
+- Keep the distinction between an AI recommendation and an approved human decision explicit.
+- Preserve the existing closing requirements and validation.
+- Do not bypass or weaken guardrails to make the interface appear simpler.
+- Ensure the current risk #5 demo data still displays correctly and references reassessment #10.
+
+### E. Upload and feedback states
+- Polish upload controls, supported-format information, loading indicators, success messages, validation errors, empty states, and retry guidance.
+- Ensure errors remain understandable and do not imply that a failed analysis succeeded.
+- Avoid unnecessary UI blocking or confusing duplicate actions.
+
+## 3. Functional preservation requirements
+
+- Do not rebuild the app from scratch.
+- Do not replace working backend behavior with mock data or hardcoded UI results.
+- Do not change database schemas or modify demo database records.
+- Do not change AI prompts, analysis logic, evidence-verification rules, reassessment guardrails, or human-approval requirements.
+- Do not add authentication, rate limiting, new features, or dependencies as part of this UI task.
+- Do not make paid AI calls.
+- Do not print secrets or expose environment variables.
+- Do not commit, push, reset, rebase, or rewrite Git history.
+- Preserve the `proxy-addr` `^2.0.8` security override and all previous changes.
+
+## 4. Implementation approach
+
+1. Inspect the current Git status and existing UI implementation before editing.
+2. Identify the actual entry points and components for the dashboard, risk register, risk detail, evidence, reassessment, and upload flow.
+3. Make focused, coherent changes to the existing components rather than replacing entire pages unnecessarily.
+4. Reuse existing UI libraries and components where possible. Avoid adding dependencies unless absolutely necessary and approved.
+5. Run the available tests and typecheck after implementation. Fix regressions caused by your changes.
+6. Inspect the rendered application at desktop and narrower widths, using screenshots or browser inspection if available.
+7. Check the primary demo workflow and confirm all existing controls still behave correctly.
+8. If an existing feature is broken or a substantial change outside UI scope is necessary, explain the issue and wait for approval rather than silently expanding scope.
+
+## 5. Hackathon demo quality
+
+The final result should make the product's value obvious:
+
+Veriscope identifies a business risk, links it to source evidence, allows additional evidence to be assessed, and keeps the final closure decision under human control.
+
+Use the existing real data to support this story. Do not create fake AI results or fabricate claims about what the platform has verified.
+
+## 6. Final report
+
+When finished, report:
+
+- The main UI improvements made.
+- Which pages and components changed.
+- Test and typecheck commands with their actual results.
+- Whether desktop and narrow-screen layouts were inspected.
+- Any remaining visual or functional issues.
+- Confirmation that the database records, AI logic, evidence verification, and closure guardrails were preserved.
+
+Do not commit or push. Preserve all local work and stop after reporting the results.

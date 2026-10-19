@@ -61,10 +61,10 @@ export default function Reassessment() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* BEFORE */}
           <section className="space-y-4 min-w-0" data-testid="column-before">
-            <div className="flex items-baseline gap-3 border-b-2 border-foreground/80 pb-1.5"><span className="font-serif text-2xl">Before</span><span className={labelCls}>the risk as identified</span></div>
+            <div className="flex items-baseline gap-3 border-b-2 border-foreground/80 pb-1.5"><span className="font-serif text-xl font-semibold">Before</span><span className={labelCls}>the risk as identified</span></div>
             <Panel title="Original risk">
               <div className="flex flex-wrap gap-1.5"><SeverityChip severity={r.severity} />{r.likelihood && <Chip className="border-border text-muted-foreground">likelihood {r.likelihood}</Chip>}</div>
-              <p className="mt-2 font-serif text-[16px] leading-relaxed">{r.description}</p>
+              <p className="mt-2 text-[15px] leading-relaxed">{r.description}</p>
               {r.businessImpact && <div className="mt-3"><div className={labelCls}>Business impact</div><p className="mt-0.5 text-[13.5px] leading-relaxed">{r.businessImpact}</p></div>}
               <div className="mt-3 font-mono text-[11px] text-muted-foreground">Source: <Link href={`/documents/${r.documentId}`} className="text-foreground underline underline-offset-4">{r.sourceDocument?.title ?? r.documentTitle}</Link></div>
             </Panel>
@@ -88,14 +88,14 @@ export default function Reassessment() {
 
           {/* AFTER */}
           <section className="space-y-4 min-w-0" data-testid="column-after">
-            <div className="flex items-baseline gap-3 border-b-2 border-accent pb-1.5"><span className="font-serif text-2xl">After</span><span className={labelCls}>new evidence</span></div>
+            <div className="flex items-baseline gap-3 border-b-2 border-accent pb-1.5"><span className="font-serif text-xl font-semibold">After</span><span className={labelCls}>new evidence</span></div>
             <Panel title="Evidence document">
               {a.evidenceDocumentId != null
                 ? <Link href={`/documents/${a.evidenceDocumentId}`} data-testid="link-evidence-document" className="inline-flex items-center gap-2 font-serif text-[17px] underline decoration-accent decoration-2 underline-offset-4"><FileText className="size-4" />{a.evidenceDocumentTitle ?? `Document ${a.evidenceDocumentId}`}</Link>
                 : <p className="text-[13px] text-muted-foreground">No evidence document recorded.</p>}
               {a.evidenceType && (
                 <div className="mt-3" data-testid="text-evidence-type">
-                  <Chip className={a.evidenceType === "operating_evidence" ? "border-foreground/20 bg-accent text-accent-foreground" : "border-dashed border-foreground/30"}>{evidenceTypeLabel[a.evidenceType].label}</Chip>
+                  <Chip className={a.evidenceType === "operating_evidence" ? "border-accent/35 bg-accent/10 text-accent" : "border-dashed border-foreground/30"}>{evidenceTypeLabel[a.evidenceType].label}</Chip>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">{evidenceTypeLabel[a.evidenceType].explain}</p>
                 </div>
               )}

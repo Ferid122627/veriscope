@@ -60,8 +60,8 @@ export function PageHeader({ eyebrow, title, children, meta }: { eyebrow: string
   return (
     <header className="flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between rise">
       <div className="min-w-0">
-        <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</div>
-        <h1 className="mt-1.5 font-serif text-[2rem] leading-[1.1] tracking-tight text-foreground md:text-[2.4rem]">{title}</h1>
+        <div className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-accent">{eyebrow}</div>
+        <h1 className="mt-1.5 font-serif text-[1.6rem] font-semibold leading-[1.15] tracking-tight text-foreground md:text-[2rem]">{title}</h1>
         {meta && <div className="mt-2 text-sm text-muted-foreground">{meta}</div>}
       </div>
       {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
@@ -71,10 +71,10 @@ export function PageHeader({ eyebrow, title, children, meta }: { eyebrow: string
 
 export function Panel({ title, aside, children, className, bodyClass }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string; bodyClass?: string }) {
   return (
-    <section className={cn("rounded-md border border-card-border bg-card", className)}>
+    <section className={cn("rounded-md border border-card-border bg-card shadow-sm", className)}>
       {title && (
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</h2>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-foreground/80">{title}</h2>
           {aside}
         </div>
       )}
@@ -93,7 +93,7 @@ export function EmptyState({ icon, title, body, action, testId }: { icon: ReactN
       <div className="relative mb-4 grid size-12 place-items-center rounded-full border border-dashed border-foreground/25 text-muted-foreground">
         {icon}
       </div>
-      <div className="font-serif text-lg text-foreground">{title}</div>
+      <div className="font-serif text-base font-semibold text-foreground">{title}</div>
       <p className="mt-1 max-w-sm text-sm leading-relaxed text-muted-foreground">{body}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -144,7 +144,7 @@ export function existingDocId(err: unknown): number | null {
 }
 
 export function EvidenceStatusBadge({ status, testId }: { status: EvidenceStatus; testId?: string }) {
-  if (status === "verified") return <Chip testId={testId} className="border-foreground/20 bg-accent text-accent-foreground"><BadgeCheck className="size-3" />{evidenceStatusLabel.verified}</Chip>;
+  if (status === "verified") return <Chip testId={testId} className="border-accent/35 bg-accent/10 text-accent"><BadgeCheck className="size-3" />{evidenceStatusLabel.verified}</Chip>;
   if (status === "partially_verified") return <Chip testId={testId} className="border-[hsl(48_85%_50%/0.5)] text-[hsl(42_80%_30%)] bg-[hsl(48_85%_50%/0.1)]"><CircleDashed className="size-3" />{evidenceStatusLabel.partially_verified}</Chip>;
   if (status === "unverified") return <Chip testId={testId} className="border-dashed border-destructive/60 text-destructive bg-destructive/5"><CircleAlert className="size-3" />{evidenceStatusLabel.unverified}</Chip>;
   return <Chip testId={testId} className="border-border text-muted-foreground"><CircleSlash className="size-3" />{evidenceStatusLabel.no_evidence}</Chip>;
@@ -176,8 +176,8 @@ export const evidenceTypeLabel: Record<EvidenceType, { label: string; explain: s
   mixed: { label: "Mixed", explain: "Contains some operating evidence alongside policies or plans. Only the operating-evidence parts can support resolution." },
 };
 
-export const inputCls = "h-8 w-full rounded-sm border border-input bg-background px-2.5 text-[13px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/15";
-export const labelCls = "font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground";
+export const inputCls = "h-9 w-full rounded-sm border border-input bg-card px-2.5 text-[13px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/15";
+export const labelCls = "text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
 
 export function AiRecommendation({ children, className, testId }: { children: ReactNode; className?: string; testId?: string }) {
   return (

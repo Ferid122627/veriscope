@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
 const MAX = 10 * 1024 * 1024;
 const field = "mt-1.5 h-9 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15";
-const lbl = "font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground";
+const lbl = "text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
 
 function checkFile(f: File): string | null {
   const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".")).toLowerCase() : "";
@@ -68,7 +68,7 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
     <Dialog open={open} onOpenChange={(o) => { if (!pending) { onOpenChange(o); if (!o) setErr(null); } }}>
       <DialogContent className="max-w-2xl bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl font-normal">Add a document</DialogTitle>
+          <DialogTitle className="font-serif text-xl font-semibold tracking-tight">Add a document</DialogTitle>
           <DialogDescription>Its text becomes the ground truth. Evidence quotes are verified against it character for character.</DialogDescription>
         </DialogHeader>
         <div className="inline-flex self-start overflow-hidden rounded-sm border border-border">
@@ -89,7 +89,7 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
                 onDragLeave={() => setDrag(false)}
                 onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
                 className={cn("flex cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed px-6 py-9 text-center transition-colors",
-                  drag ? "border-foreground bg-accent/30" : "border-foreground/25 bg-background hover:bg-muted/50")}>
+                  drag ? "border-accent bg-accent/10" : "border-foreground/25 bg-background hover:bg-muted/50")}>
                 <input ref={inputRef} type="file" accept={ACCEPT.join(",")} className="hidden" data-testid="input-file" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
                 {file ? (
                   <div className="flex items-center gap-3 text-left">
@@ -101,7 +101,7 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
                   <>
                     <UploadCloud className="mb-2 size-6 text-muted-foreground" />
                     <div className="text-sm">Drop a file here, or <span className="underline decoration-accent decoration-2 underline-offset-4">browse</span></div>
-                    <div className="mt-1 font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground">PDF · DOCX · TXT · MD — up to 10 MB</div>
+                    <div className="mt-1.5 text-[12px] text-muted-foreground">Supported: PDF, DOCX, TXT, MD · up to 10 MB · PDFs need selectable text</div>
                   </>
                 )}
               </div>
@@ -130,7 +130,8 @@ export function AddDocumentDialog({ open, onOpenChange }: { open: boolean; onOpe
               )}
             </div>
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {pending && <span className="mr-auto inline-flex items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="text-upload-progress" aria-live="polite"><Loader2 className="size-3 animate-spin" />{tab === "upload" ? "Uploading and extracting text…" : "Saving document…"}</span>}
             <button type="button" className={btnGhost} disabled={pending} onClick={() => onOpenChange(false)} data-testid="button-cancel">Cancel</button>
             <button type="submit" className={btnPrimary} disabled={pending} data-testid="button-submit-document">
               {pending && <Loader2 className="size-3.5 animate-spin" />} {pending ? (tab === "upload" ? "Uploading..." : "Adding...") : tab === "upload" ? "Upload document" : "Add document"}
